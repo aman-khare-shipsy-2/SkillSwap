@@ -69,13 +69,13 @@ const Chat = () => {
   });
 
   const createRatingMutation = useMutation({
-    mutationFn: (data: { ratedUserId: string; skillId: string; score: number; comment?: string }) => {
+    mutationFn: (data: { ratedUserId: string; skillId: string; score: number; comment?: string; sessionId?: string }) => {
       return ratingService.createRating({
         ratedUserId: data.ratedUserId,
         skillId: data.skillId,
         score: data.score,
         comment: data.comment,
-        sessionId: chatId,
+        sessionId: data.sessionId || chatId,
       });
     },
     onSuccess: () => {
@@ -159,7 +159,7 @@ const Chat = () => {
         setShowRatingModal(true);
         queryClient.invalidateQueries({ queryKey: ['chats'] });
         queryClient.invalidateQueries({ queryKey: ['requests', 'accepted'] });
-        toast.info('Session ended. Please rate your experience.');
+        toast('Session ended. Please rate your experience.', { icon: 'ℹ️' });
       }
     };
 
