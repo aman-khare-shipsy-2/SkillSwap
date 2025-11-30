@@ -72,17 +72,29 @@ const Chat = () => {
 
     socket.emit('join-chat', { chatId });
 
-    socket.on('send-message', (newMessage: Message) => {
-      queryClient.setQueryData(['chat', chatId], (old: ChatSession | undefined) => {
-        if (!old) return old;
-        return {
-          ...old,
-          messages: [...old.messages, newMessage],
-        };
-      });
-    });
+    // Listen for new messages
+    const handleNewMessage = (data: { message: Message; chatId: string }) => {
+      if (data.chatId === chatId) {
+        queryClient.setQueryData(['chat', chatId], (old: ChatSession | undefined) => {
+          if (!old) return old;
+          // Check if message already exists to avoid duplicates
+          const messageExists = old.messages.some(
+            (msg) => (typeof msg._id === 'string' ? msg._id : msg._id) === (typeof data.message._id === 'string' ? data.message._id : data.message._id)
+          );
+          if (messageExists) return old;
+          
+          return {
+            ...old,
+            messages: [...old.messages, data.message],
+          };
+        });
+      }
+    };
+
+    socket.on('new-message', handleNewMessage);
 
     return () => {
+      socket.off('new-message', handleNewMessage);
       socket.emit('leave-chat', { chatId });
     };
   }, [chatId, user, queryClient]);

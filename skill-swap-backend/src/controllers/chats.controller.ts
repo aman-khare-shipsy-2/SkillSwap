@@ -8,6 +8,7 @@ import {
 } from '../services/chats.service';
 import { sendSuccess, sendError, sendPagination } from '../utils/responses';
 import { ERROR_MESSAGES, HTTP_STATUS, SUCCESS_MESSAGES } from '../utils/constants';
+import { io } from '../server';
 
 export const getChatSessionController = async (
   req: Request,
@@ -105,8 +106,16 @@ export const sendMessageController = async (
       type: message.type,
     });
 
-    // Socket.io event will be handled by the socket handler
-    // The message is already saved to the database above
+    // Emit socket event to notify all participants in the chat room
+    if (io) {
+      io.to(`chat:${id}`).emit('new-message', {
+        message,
+        chatId: id,
+      });
+      console.log('Socket event emitted for chat:', id);
+    } else {
+      console.warn('Socket.io not initialized, real-time updates may not work');
+    }
 
     sendSuccess(res, message, SUCCESS_MESSAGES.MESSAGE_SENT);
   } catch (error) {
