@@ -2,10 +2,11 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { chatService } from '../services/chat.service';
+import { ratingService } from '../services/rating.service';
 import { initializeSocket } from '../services/socket';
 import { useAuthStore } from '../store/authStore';
 import toast from 'react-hot-toast';
-import { FiSend, FiPaperclip, FiX } from 'react-icons/fi';
+import { FiSend, FiPaperclip, FiX, FiStar } from 'react-icons/fi';
 import type { Message, ChatSession } from '../types';
 
 const Chat = () => {
@@ -16,6 +17,9 @@ const Chat = () => {
   const [message, setMessage] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [messageType, setMessageType] = useState<'text' | 'image' | 'video' | 'document' | 'link'>('text');
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [ratingComment, setRatingComment] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -59,8 +63,29 @@ const Chat = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chats'] });
       queryClient.invalidateQueries({ queryKey: ['requests', 'accepted'] });
-      toast.success('Chat session ended');
+      // Show rating modal instead of navigating immediately
+      setShowRatingModal(true);
+    },
+  });
+
+  const createRatingMutation = useMutation({
+    mutationFn: (data: { ratedUserId: string; skillId: string; score: number; comment?: string }) => {
+      return ratingService.createRating({
+        chatSessionId: chatId!,
+        ratedUserId: data.ratedUserId,
+        rating: data.score,
+        comment: data.comment,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      queryClient.invalidateQueries({ queryKey: ['analytics'] });
+      toast.success('Rating submitted successfully!');
+      setShowRatingModal(false);
       navigate('/dashboard');
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || 'Failed to submit rating');
     },
   });
 
@@ -290,6 +315,106 @@ const Chat = () => {
           >
             <FiX className="w-5 h-5" />
           </button>
+        </div>
+      )}
+
+      {/* Rating Modal */}
+      {showRatingModal && chatSession && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="card max-w-md w-full">
+            <h3 className="h3 mb-4 text-text-primary">Rate Your Learning Experience</h3>
+            <p className="text-sm text-text-secondary mb-6">
+              How would you rate {(() => {
+                const otherParticipant = chatSession.participants.find(
+                  (p: any) => (typeof p === 'string' ? p : p._id) !== user?._id
+                );
+                return typeof otherParticipant === 'string' ? 'the other participant' : otherParticipant?.name || 'the other participant';
+              })()} for teaching you {(() => {
+                const request = typeof chatSession.requestId === 'object' ? chatSession.requestId : null;
+                if (user?._id && request) {
+                  // Determine which skill the user was learning
+                  const isSender = (request as any).senderId?._id === user._id || (request as any).senderId === user._id;
+                  const learningSkill = isSender 
+                    ? (request as any).requestedSkillId 
+                    : (request as any).offeredSkillId;
+                  return typeof learningSkill === 'object' ? learningSkill?.name : 'this skill';
+                }
+                return 'this skill';
+              })()}?
+            </p>
+
+            {/* Star Rating */}
+            <div className="flex justify-center gap-2 mb-6">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  onClick={() => setRating(star)}
+                  className={`text-3xl transition-colors ${
+                    star <= rating
+                      ? 'text-yellow-400'
+                      : 'text-gray-300 hover:text-yellow-300'
+                  }`}
+                >
+                  <FiStar className="fill-current" />
+                </button>
+              ))}
+            </div>
+
+            {/* Comment */}
+            <textarea
+              value={ratingComment}
+              onChange={(e) => setRatingComment(e.target.value)}
+              placeholder="Optional: Add a comment about your experience..."
+              className="input min-h-[100px] mb-6"
+              maxLength={500}
+            />
+
+            {/* Buttons */}
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  if (rating === 0) {
+                    toast.error('Please select a rating');
+                    return;
+                  }
+                  
+                  const otherParticipant = chatSession.participants.find(
+                    (p: any) => (typeof p === 'string' ? p : p._id) !== user?._id
+                  );
+                  const otherUserId = typeof otherParticipant === 'string' 
+                    ? otherParticipant 
+                    : otherParticipant?._id;
+
+                  const request = typeof chatSession.requestId === 'object' ? chatSession.requestId : null;
+                  let skillId = '';
+                  if (user?._id && request) {
+                    const isSender = (request as any).senderId?._id === user._id || (request as any).senderId === user._id;
+                    const learningSkill = isSender 
+                      ? (request as any).requestedSkillId 
+                      : (request as any).offeredSkillId;
+                    skillId = typeof learningSkill === 'object' ? learningSkill?._id : learningSkill || '';
+                  }
+
+                  if (!otherUserId || !skillId) {
+                    toast.error('Unable to determine rating details');
+                    return;
+                  }
+
+                  createRatingMutation.mutate({
+                    ratedUserId: otherUserId,
+                    skillId,
+                    score: rating,
+                    comment: ratingComment || undefined,
+                    sessionId: chatId,
+                  });
+                }}
+                disabled={rating === 0 || createRatingMutation.isPending}
+                className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {createRatingMutation.isPending ? 'Submitting...' : 'Submit Rating'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

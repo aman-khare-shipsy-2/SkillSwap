@@ -173,6 +173,21 @@ export const endChatSessionController = async (
     const { id } = req.params;
     const chat = await endChatSession(id, req.userId);
 
+    // Emit socket event to notify other participant
+    if (io) {
+      const otherParticipantId = chat.participants.find(
+        (p: any) => p.toString() !== req.userId
+      );
+      
+      if (otherParticipantId) {
+        io.to(`chat:${id}`).emit('session-ended', {
+          chatId: id,
+          endedBy: req.userId,
+        });
+        console.log('Session ended event emitted to chat:', id);
+      }
+    }
+
     sendSuccess(res, chat, SUCCESS_MESSAGES.CHAT_ENDED);
   } catch (error) {
     next(error);

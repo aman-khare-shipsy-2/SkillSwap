@@ -12,14 +12,30 @@ interface UserRatings {
 export const ratingService = {
   // Create rating
   createRating: async (data: {
-    chatSessionId: string;
+    chatSessionId?: string;
     ratedUserId: string;
-    rating: number;
+    skillId: string;
+    score: number;
     comment?: string;
+    sessionId?: string;
   }): Promise<Rating> => {
+    const payload: any = {
+      ratedUserId: data.ratedUserId,
+      skillId: data.skillId,
+      score: data.score,
+    };
+    
+    if (data.comment) {
+      payload.comment = data.comment;
+    }
+    
+    if (data.sessionId || data.chatSessionId) {
+      payload.sessionId = data.sessionId || data.chatSessionId;
+    }
+    
     const response = await api.post<ApiResponse<Rating>>(
       API_ENDPOINTS.CREATE_RATING,
-      data
+      payload
     );
     return response.data.data!;
   },
