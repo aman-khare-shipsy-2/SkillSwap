@@ -32,7 +32,7 @@ export const getProfile = async (
     }
 
     // Convert verifiedSkills ObjectIds to strings for frontend
-    const userResponse = user.toObject();
+    const userResponse = user.toObject() as any;
     userResponse.verifiedSkills = user.verifiedSkills.map((id) => id.toString());
 
     sendSuccess(res, userResponse);
