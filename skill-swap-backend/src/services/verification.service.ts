@@ -1,6 +1,8 @@
 import VerificationTest, { IVerificationTest, IQuestion } from '../models/VerificationTest';
 import User from '../models/User';
+import Skill from '../models/Skill';
 import { ERROR_MESSAGES, VERIFICATION_PASSING_SCORE } from '../utils/constants';
+import { getDummyQuestionsForSkill } from '../utils/dummyQuestions';
 import mongoose from 'mongoose';
 
 export interface TestQuestion {
@@ -19,27 +21,16 @@ export interface SubmitTestData {
   answers: Array<{ questionIndex: number; answer: string | number }>;
 }
 
-// Generate test questions (placeholder - in production, fetch from question bank)
-const generateTestQuestions = (_skillId: string): IQuestion[] => {
-  // This is a placeholder. In production, you would fetch questions from a database
-  // For now, return sample questions
-  return [
-    {
-      text: 'What is the fundamental concept of this skill?',
-      options: ['Option A', 'Option B', 'Option C', 'Option D'],
-      correctAnswer: 'Option A',
-    },
-    {
-      text: 'Which technique is most important?',
-      options: ['Technique 1', 'Technique 2', 'Technique 3', 'Technique 4'],
-      correctAnswer: 'Technique 1',
-    },
-    {
-      text: 'What is the best practice?',
-      options: ['Practice A', 'Practice B', 'Practice C', 'Practice D'],
-      correctAnswer: 'Practice A',
-    },
-  ];
+// Generate test questions based on skill
+const generateTestQuestions = async (skillId: string): Promise<IQuestion[]> => {
+  // Fetch skill to get its name
+  const skill = await Skill.findById(skillId);
+  if (!skill) {
+    throw new Error(ERROR_MESSAGES.SKILL_NOT_FOUND);
+  }
+
+  // Get dummy questions for this specific skill
+  return getDummyQuestionsForSkill(skill.name);
 };
 
 // Start verification test
@@ -79,7 +70,7 @@ export const startVerificationTest = async (
   }
 
   // Generate test questions
-  const questions = generateTestQuestions(skillId);
+  const questions = await generateTestQuestions(skillId);
 
   // Create verification test
   const test = new VerificationTest({
