@@ -23,24 +23,14 @@ export interface SubmitTestData {
 
 // Generate test questions based on skill
 const generateTestQuestions = async (skillId: string): Promise<IQuestion[]> => {
-  try {
-    // Fetch skill to get its name
-    const skill = await Skill.findById(skillId);
-    if (!skill) {
-      console.error('Skill not found:', skillId);
-      throw new Error(ERROR_MESSAGES.SKILL_NOT_FOUND);
-    }
-
-    console.log('Generating questions for skill:', skill.name);
-
-    // Get dummy questions for this specific skill
-    const questions = getDummyQuestionsForSkill(skill.name);
-    console.log('Generated questions count:', questions.length);
-    return questions;
-  } catch (error) {
-    console.error('Error generating test questions:', error);
-    throw error;
+  // Fetch skill to get its name
+  const skill = await Skill.findById(skillId);
+  if (!skill) {
+    throw new Error(ERROR_MESSAGES.SKILL_NOT_FOUND);
   }
+
+  // Get dummy questions for this specific skill
+  return getDummyQuestionsForSkill(skill.name);
 };
 
 // Start verification test
@@ -49,28 +39,21 @@ export const startVerificationTest = async (
   skillId: string
 ): Promise<TestWithQuestions> => {
   try {
-    console.log('startVerificationTest called:', { userId, skillId });
-
     if (!mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid(skillId)) {
-      console.error('Invalid ObjectId:', { userId, skillId });
       throw new Error(ERROR_MESSAGES.INVALID_INPUT);
     }
 
     // Check if user already verified for this skill
-    console.log('Finding user:', userId);
     const user = await User.findById(userId);
     if (!user) {
-      console.error('User not found:', userId);
       throw new Error(ERROR_MESSAGES.USER_NOT_FOUND);
     }
 
     if (user.verifiedSkills.some((id) => id.toString() === skillId)) {
-      console.log('User already verified for skill:', skillId);
       throw new Error('User is already verified for this skill');
     }
 
     // Check for existing pending test
-    console.log('Checking for existing test:', { userId, skillId });
     const existingTest = await VerificationTest.findOne({
       userId,
       skillId,
@@ -78,7 +61,6 @@ export const startVerificationTest = async (
     });
 
     if (existingTest) {
-      console.log('Returning existing test');
       // Return existing test without correct answers
       const testWithoutAnswers = existingTest.toObject();
       testWithoutAnswers.questions = testWithoutAnswers.questions.map((q: IQuestion) => ({
@@ -89,12 +71,9 @@ export const startVerificationTest = async (
     }
 
     // Generate test questions
-    console.log('Generating questions for skill:', skillId);
     const questions = await generateTestQuestions(skillId);
-    console.log('Generated questions:', questions.length);
 
     // Create verification test
-    console.log('Creating verification test');
     const test = new VerificationTest({
       userId,
       skillId,
@@ -102,9 +81,7 @@ export const startVerificationTest = async (
       status: 'pending',
     });
 
-    console.log('Saving test to database');
     await test.save();
-    console.log('Test saved successfully:', test._id);
 
     // Return test without correct answers
     const testWithoutAnswers = test.toObject();
@@ -113,14 +90,16 @@ export const startVerificationTest = async (
       options: q.options,
     })) as IQuestion[];
 
-    console.log('Returning test without answers');
     return testWithoutAnswers as TestWithQuestions;
   } catch (error) {
-    console.error('Error in startVerificationTest:', error);
-    if (error instanceof Error) {
-      console.error('Error message:', error.message);
-      console.error('Error stack:', error.stack);
-    }
+    // Re-throw with more context
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('Error in startVerificationTest:', {
+      userId,
+      skillId,
+      error: errorMessage,
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     throw error;
   }
 };

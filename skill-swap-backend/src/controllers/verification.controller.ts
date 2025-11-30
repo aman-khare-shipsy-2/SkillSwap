@@ -26,15 +26,16 @@ export const startTestController = async (
       return;
     }
 
-    // Log for debugging
-    console.log('Starting verification test:', { userId: req.userId, skillId });
-
     const test = await startVerificationTest(req.userId, skillId);
 
-    sendSuccess(res, test, SUCCESS_MESSAGES.TEST_STARTED);
+    sendSuccess(res, test, SUCCESS_MESSAGES.TEST_STARTED || 'Test started successfully');
   } catch (error) {
     // Log error for debugging
-    console.error('Error in startTestController:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('Error in startTestController:', errorMessage);
+    if (error instanceof Error) {
+      console.error('Error stack:', error.stack);
+    }
     next(error);
   }
 };
