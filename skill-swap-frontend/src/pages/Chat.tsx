@@ -71,15 +71,19 @@ const Chat = () => {
   const createRatingMutation = useMutation({
     mutationFn: (data: { ratedUserId: string; skillId: string; score: number; comment?: string }) => {
       return ratingService.createRating({
-        chatSessionId: chatId!,
         ratedUserId: data.ratedUserId,
-        rating: data.score,
+        skillId: data.skillId,
+        score: data.score,
         comment: data.comment,
+        sessionId: chatId,
       });
     },
     onSuccess: () => {
+      // Invalidate all relevant queries to update dashboard
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       queryClient.invalidateQueries({ queryKey: ['analytics'] });
+      queryClient.invalidateQueries({ queryKey: ['chats'] });
+      queryClient.invalidateQueries({ queryKey: ['requests', 'accepted'] });
       toast.success('Rating submitted successfully!');
       setShowRatingModal(false);
       navigate('/dashboard');
