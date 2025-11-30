@@ -81,7 +81,10 @@ const MySkills = () => {
                 const skillObj = typeof skill === 'string' ? null : skill;
                 const skillId = typeof skill === 'string' ? skill : skill._id;
                 // verifiedSkills are now returned as strings from backend
-                const isVerified = verifiedSkills.includes(skillId);
+                // Ensure both are strings for comparison
+                const isVerified = verifiedSkills.some(
+                  (verifiedId) => String(verifiedId) === String(skillId)
+                );
 
                 return (
                   <tr key={skillId} className="hover:bg-surface-elevation transition-colors">
@@ -108,17 +111,23 @@ const MySkills = () => {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      {!isVerified && (
-                        <button
-                          onClick={() => {
+                      <button
+                        onClick={() => {
+                          if (!isVerified) {
                             // Navigate to verification page
                             window.location.href = `/verification/${skillId}`;
-                          }}
-                          className="text-primary-600 hover:text-primary-700 font-medium transition-colors"
-                        >
-                          Verify
-                        </button>
-                      )}
+                          }
+                        }}
+                        disabled={isVerified}
+                        className={`font-medium transition-colors ${
+                          isVerified
+                            ? 'text-text-tertiary cursor-not-allowed opacity-50'
+                            : 'text-primary-600 hover:text-primary-700 cursor-pointer'
+                        }`}
+                        title={isVerified ? 'This skill is already verified' : 'Verify this skill'}
+                      >
+                        {isVerified ? 'Verified' : 'Verify'}
+                      </button>
                     </td>
                   </tr>
                 );
