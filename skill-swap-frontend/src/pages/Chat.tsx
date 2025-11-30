@@ -408,12 +408,45 @@ const Chat = () => {
 
                   const request = typeof chatSession.requestId === 'object' ? chatSession.requestId : null;
                   let skillId = '';
+                  
+                  console.log('Extracting skillId from request:', {
+                    hasRequest: !!request,
+                    requestType: typeof chatSession.requestId,
+                    requestData: request,
+                    userId: user?._id,
+                  });
+                  
                   if (user?._id && request) {
-                    const isSender = (request as any).senderId?._id === user._id || (request as any).senderId === user._id;
+                    // Determine if current user is sender or receiver
+                    const senderId = typeof (request as any).senderId === 'object' 
+                      ? (request as any).senderId?._id 
+                      : (request as any).senderId;
+                    const receiverId = typeof (request as any).receiverId === 'object'
+                      ? (request as any).receiverId?._id
+                      : (request as any).receiverId;
+                    
+                    const isSender = senderId === user._id || String(senderId) === String(user._id);
+                    
+                    console.log('Request participant check:', {
+                      senderId,
+                      receiverId,
+                      userId: user._id,
+                      isSender,
+                    });
+                    
+                    // If user is sender, they're learning the requestedSkillId
+                    // If user is receiver, they're learning the offeredSkillId
                     const learningSkill = isSender 
                       ? (request as any).requestedSkillId 
                       : (request as any).offeredSkillId;
-                    skillId = typeof learningSkill === 'object' ? learningSkill?._id : learningSkill || '';
+                    
+                    console.log('Learning skill:', learningSkill);
+                    
+                    skillId = typeof learningSkill === 'object' 
+                      ? (learningSkill?._id || learningSkill?.id || '')
+                      : (learningSkill || '');
+                    
+                    console.log('Extracted skillId:', skillId);
                   }
 
                   if (!otherUserId || !skillId) {
