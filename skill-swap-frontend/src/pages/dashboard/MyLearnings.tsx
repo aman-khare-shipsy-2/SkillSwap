@@ -30,6 +30,7 @@ const MyLearnings = () => {
     queryKey: ['requests', 'accepted'],
     queryFn: () => requestService.getMyRequests('accepted'),
     enabled: !!user,
+    refetchOnWindowFocus: true,
   });
 
   const addDesiredSkillMutation = useMutation({

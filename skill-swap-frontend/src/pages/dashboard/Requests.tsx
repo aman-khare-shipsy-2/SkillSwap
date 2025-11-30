@@ -15,6 +15,8 @@ const Requests = () => {
     mutationFn: (requestId: string) => requestService.acceptRequest(requestId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['requests'] });
+      queryClient.invalidateQueries({ queryKey: ['requests', 'accepted'] });
+      queryClient.invalidateQueries({ queryKey: ['chats'] });
       toast.success('Request accepted! Chat session created.');
     },
   });
