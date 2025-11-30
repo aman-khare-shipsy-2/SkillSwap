@@ -58,6 +58,7 @@ const Chat = () => {
     mutationFn: () => chatService.endChatSession(chatId!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chats'] });
+      queryClient.invalidateQueries({ queryKey: ['requests', 'accepted'] });
       toast.success('Chat session ended');
       navigate('/dashboard');
     },
