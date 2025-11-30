@@ -48,7 +48,7 @@ const VerificationTest = () => {
     if (!test) return;
 
     // Convert answers to backend format (using questionIndex as key)
-    const answersArray = test.questions.map((q, index) => {
+    const answersArray = test.questions.map((_, index) => {
       const answer = answers[index] || '';
       return {
         questionIndex: index,
