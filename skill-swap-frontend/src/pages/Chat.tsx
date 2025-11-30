@@ -417,9 +417,23 @@ const Chat = () => {
                   }
 
                   if (!otherUserId || !skillId) {
+                    console.error('Missing rating details:', {
+                      otherUserId,
+                      skillId,
+                      chatSession,
+                      user: user?._id,
+                    });
                     toast.error('Unable to determine rating details');
                     return;
                   }
+
+                  console.log('Submitting rating with data:', {
+                    ratedUserId: otherUserId,
+                    skillId,
+                    score: rating,
+                    hasComment: !!ratingComment,
+                    sessionId: chatId,
+                  });
 
                   createRatingMutation.mutate({
                     ratedUserId: otherUserId,

@@ -33,11 +33,20 @@ export const ratingService = {
       payload.sessionId = data.sessionId || data.chatSessionId;
     }
     
-    const response = await api.post<ApiResponse<Rating>>(
-      API_ENDPOINTS.CREATE_RATING,
-      payload
-    );
-    return response.data.data!;
+    console.log('Rating service - sending payload:', payload);
+    
+    try {
+      const response = await api.post<ApiResponse<Rating>>(
+        API_ENDPOINTS.CREATE_RATING,
+        payload
+      );
+      console.log('Rating service - success response:', response.data);
+      return response.data.data!;
+    } catch (error: any) {
+      console.error('Rating service - error:', error);
+      console.error('Rating service - error response:', error?.response);
+      throw error;
+    }
   },
 
   // Get user's ratings
