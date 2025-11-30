@@ -63,8 +63,10 @@ export const getChatSession = async (
     {
       path: 'requestId',
       populate: [
-        { path: 'offeredSkillId', select: 'name category' },
-        { path: 'requestedSkillId', select: 'name category' },
+        { path: 'senderId', select: 'name email _id' },
+        { path: 'receiverId', select: 'name email _id' },
+        { path: 'offeredSkillId', select: 'name category _id' },
+        { path: 'requestedSkillId', select: 'name category _id' },
       ],
     },
   ]);
@@ -95,8 +97,10 @@ export const getUserChats = async (
         {
           path: 'requestId',
           populate: [
-            { path: 'offeredSkillId', select: 'name category' },
-            { path: 'requestedSkillId', select: 'name category' },
+            { path: 'senderId', select: 'name email _id' },
+            { path: 'receiverId', select: 'name email _id' },
+            { path: 'offeredSkillId', select: 'name category _id' },
+            { path: 'requestedSkillId', select: 'name category _id' },
           ],
         },
       ])
