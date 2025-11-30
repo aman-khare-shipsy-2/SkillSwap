@@ -23,14 +23,24 @@ export interface SubmitTestData {
 
 // Generate test questions based on skill
 const generateTestQuestions = async (skillId: string): Promise<IQuestion[]> => {
-  // Fetch skill to get its name
-  const skill = await Skill.findById(skillId);
-  if (!skill) {
-    throw new Error(ERROR_MESSAGES.SKILL_NOT_FOUND);
-  }
+  try {
+    // Fetch skill to get its name
+    const skill = await Skill.findById(skillId);
+    if (!skill) {
+      console.error('Skill not found:', skillId);
+      throw new Error(ERROR_MESSAGES.SKILL_NOT_FOUND);
+    }
 
-  // Get dummy questions for this specific skill
-  return getDummyQuestionsForSkill(skill.name);
+    console.log('Generating questions for skill:', skill.name);
+
+    // Get dummy questions for this specific skill
+    const questions = getDummyQuestionsForSkill(skill.name);
+    console.log('Generated questions count:', questions.length);
+    return questions;
+  } catch (error) {
+    console.error('Error generating test questions:', error);
+    throw error;
+  }
 };
 
 // Start verification test
