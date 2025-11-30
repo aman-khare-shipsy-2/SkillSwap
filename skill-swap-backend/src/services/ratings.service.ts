@@ -23,17 +23,31 @@ export interface UserRatings {
 export const createRating = async (data: CreateRatingData): Promise<IRating> => {
   const { ratedUserId, ratedById, skillId, score, comment, sessionId } = data;
 
+  console.log('createRating service called with:', {
+    ratedUserId,
+    ratedById,
+    skillId,
+    score,
+    sessionId,
+  });
+
   // Validate ObjectIds
   if (
     !mongoose.Types.ObjectId.isValid(ratedUserId) ||
     !mongoose.Types.ObjectId.isValid(ratedById) ||
     !mongoose.Types.ObjectId.isValid(skillId)
   ) {
+    console.error('Invalid ObjectIds:', {
+      ratedUserId: mongoose.Types.ObjectId.isValid(ratedUserId),
+      ratedById: mongoose.Types.ObjectId.isValid(ratedById),
+      skillId: mongoose.Types.ObjectId.isValid(skillId),
+    });
     throw new Error(ERROR_MESSAGES.INVALID_INPUT);
   }
 
   // Validate sessionId if provided
   if (sessionId && !mongoose.Types.ObjectId.isValid(sessionId)) {
+    console.error('Invalid sessionId:', sessionId);
     throw new Error(ERROR_MESSAGES.INVALID_INPUT);
   }
 
@@ -60,21 +74,45 @@ export const createRating = async (data: CreateRatingData): Promise<IRating> => 
     sessionId: sessionId || undefined,
   });
 
-  await rating.save();
+  try {
+    await rating.save();
+    console.log('Rating saved to database:', rating._id);
+  } catch (saveError) {
+    console.error('Error saving rating:', saveError);
+    throw saveError;
+  }
 
   // Update user's average rating
-  await updateUserAverageRating(ratedUserId);
+  try {
+    await updateUserAverageRating(ratedUserId);
+    console.log('User average rating updated');
+  } catch (updateError) {
+    console.error('Error updating user average rating:', updateError);
+    // Don't throw - rating is already saved
+  }
 
   // Update user's ratings history
-  await updateRatingsHistory(ratedUserId, {
-    rating: score,
-    skill: skillId as unknown as mongoose.Types.ObjectId,
-    sessionId: sessionId ? (sessionId as unknown as mongoose.Types.ObjectId) : undefined,
-    timestamp: new Date(),
-  });
+  try {
+    await updateRatingsHistory(ratedUserId, {
+      rating: score,
+      skill: skillId as unknown as mongoose.Types.ObjectId,
+      sessionId: sessionId ? (sessionId as unknown as mongoose.Types.ObjectId) : undefined,
+      timestamp: new Date(),
+    });
+    console.log('Ratings history updated');
+  } catch (historyError) {
+    console.error('Error updating ratings history:', historyError);
+    // Don't throw - rating is already saved
+  }
 
   // Update analytics
-  await updateAnalytics(ratedUserId, skillId, score, sessionId);
+  try {
+    await updateAnalytics(ratedUserId, skillId, score, sessionId);
+    console.log('Analytics updated');
+  } catch (analyticsError) {
+    console.error('Error updating analytics:', analyticsError);
+    // Don't throw - rating is already saved
+  }
 
   await rating.populate([
     { path: 'ratedUserId', select: 'name email profilePictureURL' },

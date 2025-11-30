@@ -89,7 +89,10 @@ const Chat = () => {
       navigate('/dashboard');
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || 'Failed to submit rating');
+      console.error('Rating submission error:', error);
+      console.error('Error response:', error?.response);
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to submit rating';
+      toast.error(errorMessage);
     },
   });
 

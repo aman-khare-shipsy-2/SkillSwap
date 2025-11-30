@@ -20,16 +20,29 @@ export const createRatingController = async (
 
     const { ratedUserId, skillId, score, comment, sessionId } = req.body;
 
+    console.log('Create rating request:', {
+      userId: req.userId,
+      ratedUserId,
+      skillId,
+      score,
+      hasComment: !!comment,
+      sessionId,
+      bodyKeys: Object.keys(req.body),
+    });
+
     if (!ratedUserId || !skillId || !score) {
+      console.error('Missing required fields:', { ratedUserId, skillId, score });
       sendError(res, ERROR_MESSAGES.MISSING_REQUIRED_FIELDS, HTTP_STATUS.BAD_REQUEST);
       return;
     }
 
     if (score < 1 || score > 5) {
+      console.error('Invalid score:', score);
       sendError(res, 'Rating must be between 1 and 5', HTTP_STATUS.BAD_REQUEST);
       return;
     }
 
+    console.log('Calling createRating service...');
     const rating = await createRating({
       ratedUserId,
       ratedById: req.userId,
@@ -39,8 +52,15 @@ export const createRatingController = async (
       sessionId,
     });
 
+    console.log('Rating created successfully:', rating._id);
     sendSuccess(res, rating, SUCCESS_MESSAGES.RATING_CREATED, HTTP_STATUS.CREATED);
   } catch (error) {
+    console.error('Error in createRatingController:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('Error details:', {
+      message: errorMessage,
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     next(error);
   }
 };
