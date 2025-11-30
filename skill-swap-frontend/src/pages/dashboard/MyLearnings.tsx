@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userService } from '../../services/user.service';
 import { skillService } from '../../services/skill.service';
+import { requestService } from '../../services/request.service';
 import { PREDEFINED_SKILLS } from '../../constants/skills';
+import { useAuthStore } from '../../store/authStore';
 import toast from 'react-hot-toast';
 import { FiPlus, FiX, FiCheck } from 'react-icons/fi';
 
@@ -19,6 +21,15 @@ const MyLearnings = () => {
     queryKey: ['skills'],
     queryFn: () => skillService.getAllSkills({ limit: 100 }),
     retry: 2,
+  });
+
+  const { user } = useAuthStore();
+
+  // Fetch accepted requests to show currently learning skills
+  const { data: acceptedRequests } = useQuery({
+    queryKey: ['requests', 'accepted'],
+    queryFn: () => requestService.getMyRequests('accepted'),
+    enabled: !!user,
   });
 
   const addDesiredSkillMutation = useMutation({
@@ -44,8 +55,58 @@ const MyLearnings = () => {
 
   const desiredSkills = profile?.desiredSkills || [];
 
-  // For now, we'll show desired skills as "wish to learn"
-  // "Currently learning" and "Skills learnt" can be enhanced later
+  // Extract currently learning skills from accepted requests
+  const currentlyLearningSkills = useMemo(() => {
+    if (!acceptedRequests || !user) return [];
+
+    const learningSkills: Array<{ skillId: string; skillName: string; fromUser: string; requestId: string }> = [];
+
+    // For requests sent by user: they're learning the requestedSkillId
+    acceptedRequests.sent.forEach((request) => {
+      const skill = typeof request.requestedSkillId === 'string' 
+        ? null 
+        : request.requestedSkillId;
+      const skillId = typeof request.requestedSkillId === 'string'
+        ? request.requestedSkillId
+        : request.requestedSkillId._id;
+      const fromUser = typeof request.receiverId === 'string'
+        ? 'Unknown'
+        : request.receiverId.name;
+
+      if (skillId) {
+        learningSkills.push({
+          skillId,
+          skillName: skill?.name || 'Loading...',
+          fromUser,
+          requestId: typeof request._id === 'string' ? request._id : request._id,
+        });
+      }
+    });
+
+    // For requests received by user: they're learning the offeredSkillId
+    acceptedRequests.received.forEach((request) => {
+      const skill = typeof request.offeredSkillId === 'string'
+        ? null
+        : request.offeredSkillId;
+      const skillId = typeof request.offeredSkillId === 'string'
+        ? request.offeredSkillId
+        : request.offeredSkillId._id;
+      const fromUser = typeof request.senderId === 'string'
+        ? 'Unknown'
+        : request.senderId.name;
+
+      if (skillId) {
+        learningSkills.push({
+          skillId,
+          skillName: skill?.name || 'Loading...',
+          fromUser,
+          requestId: typeof request._id === 'string' ? request._id : request._id,
+        });
+      }
+    });
+
+    return learningSkills;
+  }, [acceptedRequests, user]);
 
   return (
     <div className="space-y-6">
@@ -65,11 +126,63 @@ const MyLearnings = () => {
         <h3 className="h4 text-text-primary mb-4">
           Currently Learning
         </h3>
-        <p className="text-text-secondary">
-          {desiredSkills.length > 0
-            ? 'Start a skill exchange to begin learning!'
-            : 'No active learning sessions'}
-        </p>
+        {currentlyLearningSkills.length === 0 ? (
+          <p className="text-text-secondary">
+            No active learning sessions. Accept a skill exchange request to start learning!
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {currentlyLearningSkills.map((learning) => (
+              <div
+                key={learning.requestId}
+                className="flex items-center justify-between p-3 bg-surface-elevation rounded-xl hover:bg-surface transition-colors"
+              >
+                <div className="flex-1">
+                  <span className="text-text-primary font-medium block">
+                    {learning.skillName}
+                  </span>
+                  <span className="text-xs text-text-secondary">
+                    Learning from {learning.fromUser}
+                  </span>
+                </div>
+                <button
+                  onClick={async () => {
+                    // Find the chat session for this request
+                    try {
+                      const chats = await queryClient.fetchQuery({
+                        queryKey: ['chats'],
+                        queryFn: async () => {
+                          const chatService = (await import('../../services/chat.service')).chatService;
+                          return chatService.getMyChats();
+                        },
+                      });
+                      
+                      const chatSession = chats.find((chat: any) => {
+                        const requestId = typeof chat.requestId === 'string' 
+                          ? chat.requestId 
+                          : chat.requestId?._id || chat.requestId;
+                        return requestId === learning.requestId;
+                      });
+                      
+                      if (chatSession) {
+                        const chatId = typeof chatSession._id === 'string' ? chatSession._id : chatSession._id;
+                        window.location.href = `/chat/${chatId}`;
+                      } else {
+                        toast.error('Chat session not found. Please try again.');
+                      }
+                    } catch (error) {
+                      console.error('Error finding chat:', error);
+                      toast.error('Could not open chat. Please try again.');
+                    }
+                  }}
+                  className="text-primary-600 hover:text-primary-700 text-sm font-medium transition-colors ml-4"
+                >
+                  Open Chat
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Wish to Learn Section */}
