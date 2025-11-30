@@ -37,20 +37,19 @@ const VerificationTest = () => {
     }
   }, [testData]);
 
-  const handleAnswerChange = (questionId: string, answer: string) => {
+  const handleAnswerChange = (questionIndex: number, answer: string) => {
     setAnswers((prev) => ({
       ...prev,
-      [questionId]: answer,
+      [questionIndex]: answer,
     }));
   };
 
   const handleSubmit = () => {
     if (!test) return;
 
-    // Convert answers to backend format (questionIndex instead of questionId)
+    // Convert answers to backend format (using questionIndex as key)
     const answersArray = test.questions.map((q, index) => {
-      const questionKey = q._id || index.toString();
-      const answer = answers[questionKey] || '';
+      const answer = answers[index] || '';
       return {
         questionIndex: index,
         answer: answer,
@@ -111,21 +110,21 @@ const VerificationTest = () => {
           </h2>
 
           <div className="space-y-3">
-            {currentQuestion.options.map((option, index) => (
+            {currentQuestion.options.map((option, optionIndex) => (
               <label
-                key={index}
+                key={optionIndex}
                 className={`flex items-center p-4 border-2 rounded-lg cursor-pointer transition-colors ${
-                  answers[currentQuestion._id || ''] === option
+                  answers[currentQuestionIndex] === option
                     ? 'border-blue-600 bg-blue-50'
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
                 <input
                   type="radio"
-                  name={`question-${currentQuestion._id}`}
+                  name={`question-${currentQuestionIndex}`}
                   value={option}
-                  checked={answers[currentQuestion._id || ''] === option}
-                  onChange={() => handleAnswerChange(currentQuestion._id || '', option)}
+                  checked={answers[currentQuestionIndex] === option}
+                  onChange={() => handleAnswerChange(currentQuestionIndex, option)}
                   className="mr-3"
                 />
                 <span className="text-gray-900">{option}</span>
