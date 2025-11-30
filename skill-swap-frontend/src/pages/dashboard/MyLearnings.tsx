@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userService } from '../../services/user.service';
 import { skillService } from '../../services/skill.service';
 import { requestService } from '../../services/request.service';
+import { chatService } from '../../services/chat.service';
 import { PREDEFINED_SKILLS } from '../../constants/skills';
 import { useAuthStore } from '../../store/authStore';
 import toast from 'react-hot-toast';
@@ -33,6 +34,14 @@ const MyLearnings = () => {
     refetchOnWindowFocus: true,
   });
 
+  // Fetch active chat sessions to filter out ended sessions
+  const { data: activeChats } = useQuery({
+    queryKey: ['chats'],
+    queryFn: () => chatService.getMyChats(),
+    enabled: !!user,
+    refetchOnWindowFocus: true,
+  });
+
   const addDesiredSkillMutation = useMutation({
     mutationFn: (skillId: string) => userService.addDesiredSkill(skillId),
     onSuccess: () => {
@@ -56,14 +65,36 @@ const MyLearnings = () => {
 
   const desiredSkills = profile?.desiredSkills || [];
 
-  // Extract currently learning skills from accepted requests
+  // Extract currently learning skills from accepted requests with active chat sessions
   const currentlyLearningSkills = useMemo(() => {
     if (!acceptedRequests || !user) return [];
+
+    // Get active request IDs from active chat sessions
+    const activeRequestIds = new Set<string>();
+    if (activeChats) {
+      activeChats.forEach((chat) => {
+        const requestId = typeof chat.requestId === 'string' 
+          ? chat.requestId 
+          : (typeof chat.requestId === 'object' && chat.requestId?._id 
+              ? chat.requestId._id 
+              : null);
+        if (requestId && !chat.endedAt) {
+          activeRequestIds.add(String(requestId));
+        }
+      });
+    }
 
     const learningSkills: Array<{ skillId: string; skillName: string; fromUser: string; requestId: string }> = [];
 
     // For requests sent by user: they're learning the requestedSkillId
     acceptedRequests.sent.forEach((request) => {
+      const requestId = typeof request._id === 'string' ? request._id : request._id;
+      
+      // Only include if chat session is still active
+      if (!activeRequestIds.has(String(requestId))) {
+        return;
+      }
+
       const skill = typeof request.requestedSkillId === 'string' 
         ? null 
         : request.requestedSkillId;
@@ -79,13 +110,20 @@ const MyLearnings = () => {
           skillId,
           skillName: skill?.name || 'Loading...',
           fromUser,
-          requestId: typeof request._id === 'string' ? request._id : request._id,
+          requestId,
         });
       }
     });
 
     // For requests received by user: they're learning the offeredSkillId
     acceptedRequests.received.forEach((request) => {
+      const requestId = typeof request._id === 'string' ? request._id : request._id;
+      
+      // Only include if chat session is still active
+      if (!activeRequestIds.has(String(requestId))) {
+        return;
+      }
+
       const skill = typeof request.offeredSkillId === 'string'
         ? null
         : request.offeredSkillId;
@@ -101,13 +139,13 @@ const MyLearnings = () => {
           skillId,
           skillName: skill?.name || 'Loading...',
           fromUser,
-          requestId: typeof request._id === 'string' ? request._id : request._id,
+          requestId,
         });
       }
     });
 
     return learningSkills;
-  }, [acceptedRequests, user]);
+  }, [acceptedRequests, activeChats, user]);
 
   return (
     <div className="space-y-6">
