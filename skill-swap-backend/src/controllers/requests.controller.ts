@@ -136,7 +136,17 @@ export const searchUsersController = async (
     const page = parseInt(req.query.page as string, 10) || 1;
     const limit = parseInt(req.query.limit as string, 10) || 10;
 
+    console.log('Search users request:', {
+      userId: req.userId,
+      requestedSkillId,
+      offeredSkillId,
+      page,
+      limit,
+      queryKeys: Object.keys(req.query),
+    });
+
     if (!requestedSkillId || !offeredSkillId) {
+      console.error('Missing required fields:', { requestedSkillId, offeredSkillId });
       sendError(res, ERROR_MESSAGES.MISSING_REQUIRED_FIELDS, HTTP_STATUS.BAD_REQUEST);
       return;
     }
@@ -144,9 +154,15 @@ export const searchUsersController = async (
     const result = await searchUsersForSkillExchange(
       requestedSkillId as string,
       offeredSkillId as string,
+      req.userId, // Pass userId to exclude current user
       page,
       limit
     );
+
+    console.log('Search users result:', {
+      total: result.total,
+      usersFound: result.users.length,
+    });
 
     sendPagination(res, result.users, {
       page: result.page,
@@ -154,6 +170,7 @@ export const searchUsersController = async (
       total: result.total,
     });
   } catch (error) {
+    console.error('Error in searchUsersController:', error);
     next(error);
   }
 };

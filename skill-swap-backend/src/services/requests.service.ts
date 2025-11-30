@@ -281,12 +281,14 @@ export const expireRequests = async (): Promise<number> => {
 export const searchUsersForSkillExchange = async (
   requestedSkillId: string,
   userOfferedSkillId: string,
+  userId: string, // Add userId to exclude current user
   page: number = 1,
   limit: number = 10
 ): Promise<{ users: IUser[]; total: number; page: number; limit: number; totalPages: number }> => {
   if (
     !mongoose.Types.ObjectId.isValid(requestedSkillId) ||
-    !mongoose.Types.ObjectId.isValid(userOfferedSkillId)
+    !mongoose.Types.ObjectId.isValid(userOfferedSkillId) ||
+    !mongoose.Types.ObjectId.isValid(userId)
   ) {
     throw new Error(ERROR_MESSAGES.INVALID_INPUT);
   }
@@ -294,27 +296,45 @@ export const searchUsersForSkillExchange = async (
   const actualLimit = Math.min(limit, VALIDATION_RULES.MAX_LIMIT);
   const skip = (page - 1) * actualLimit;
 
+  console.log('Search users for skill exchange:', {
+    requestedSkillId,
+    userOfferedSkillId,
+    userId,
+    page,
+    limit: actualLimit,
+  });
+
   // Find users who:
   // 1. Offer the skill the user wants to learn (requestedSkillId)
   // 2. Want to learn the skill the user offers (userOfferedSkillId)
+  // 3. Are active
+  // 4. Are not the current user
+  const searchQuery = {
+    offeredSkills: new mongoose.Types.ObjectId(requestedSkillId),
+    desiredSkills: new mongoose.Types.ObjectId(userOfferedSkillId),
+    isActive: true,
+    _id: { $ne: new mongoose.Types.ObjectId(userId) }, // Exclude current user
+  };
+
+  console.log('Search query:', JSON.stringify(searchQuery, null, 2));
+
   const [users, total] = await Promise.all([
-    User.find({
-      offeredSkills: requestedSkillId,
-      desiredSkills: userOfferedSkillId,
-      isActive: true,
-    })
+    User.find(searchQuery)
       .select('name email profilePictureURL bio location averageRating verifiedSkills')
       .sort({ averageRating: -1 })
       .skip(skip)
       .limit(actualLimit)
       .lean()
       .exec(),
-    User.countDocuments({
-      offeredSkills: requestedSkillId,
-      desiredSkills: userOfferedSkillId,
-      isActive: true,
-    }),
+    User.countDocuments(searchQuery),
   ]);
+
+  console.log('Search results:', {
+    total,
+    found: users.length,
+    requestedSkillId,
+    userOfferedSkillId,
+  });
 
   return {
     users: users as IUser[],

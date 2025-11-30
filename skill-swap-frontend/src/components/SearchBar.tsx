@@ -71,10 +71,28 @@ const SearchBar = () => {
         limit: 10,
       });
 
+      console.log('Search results:', {
+        usersFound: usersResult.users.length,
+        total: usersResult.total,
+        requestedSkill: skill.name,
+        offeredSkill: user.offeredSkills[0],
+      });
+
       setSearchResults(usersResult.users);
       setShowResults(true);
-    } catch (error) {
+      
+      if (usersResult.users.length === 0) {
+        toast('No users found matching your search criteria', { icon: 'ℹ️' });
+      }
+    } catch (error: any) {
       console.error('Search error:', error);
+      console.error('Error details:', {
+        message: error?.message,
+        response: error?.response?.data,
+        status: error?.response?.status,
+      });
+      toast.error(error?.response?.data?.message || 'Search failed. Please try again.');
+      setShowResults(false);
     } finally {
       setIsSearching(false);
     }
