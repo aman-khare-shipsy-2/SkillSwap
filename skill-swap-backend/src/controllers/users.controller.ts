@@ -22,7 +22,7 @@ export const getProfile = async (
     const user = await User.findById(req.user!._id)
       .populate('offeredSkills', 'name category')
       .populate('desiredSkills', 'name category')
-      .populate('verifiedSkills', 'name category')
+      // Don't populate verifiedSkills - return as ObjectIds (will be serialized as strings)
       .select('-passwordHash')
       .exec();
 
@@ -31,7 +31,11 @@ export const getProfile = async (
       return;
     }
 
-    sendSuccess(res, user);
+    // Convert verifiedSkills ObjectIds to strings for frontend
+    const userResponse = user.toObject();
+    userResponse.verifiedSkills = user.verifiedSkills.map((id) => id.toString());
+
+    sendSuccess(res, userResponse);
   } catch (error) {
     next(error);
   }
