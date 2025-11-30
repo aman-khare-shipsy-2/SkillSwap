@@ -3,9 +3,8 @@ services:
     name: skill-swap-backend
     env: node
     plan: free
-    rootDir: skill-swap-backend
-    buildCommand: npm install && npm run build
-    startCommand: npm start
+    buildCommand: cd skill-swap-backend && npm install && npm run build
+    startCommand: cd skill-swap-backend && npm start
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
