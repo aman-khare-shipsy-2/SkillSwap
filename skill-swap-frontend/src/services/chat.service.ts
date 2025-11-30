@@ -39,7 +39,7 @@ export const chatService = {
   ): Promise<Message> => {
     const formData = new FormData();
     formData.append('type', data.type);
-    if (data.text) formData.append('content', data.text);
+    if (data.text) formData.append('text', data.text);
     if (file) formData.append('file', file);
     if (data.contentURL) formData.append('contentURL', data.contentURL);
 
