@@ -100,8 +100,8 @@ VerificationTestSchema.methods.calculateScore = function (): number {
 };
 
 // Pre-save hook to update score and status
-// @ts-expect-error - Mongoose 9 type definitions issue with pre-save hooks
-VerificationTestSchema.pre('save', function (this: IVerificationTest, next: (err?: Error) => void) {
+// Mongoose 9: async pre-save hooks don't use next callback
+VerificationTestSchema.pre('save', async function (this: IVerificationTest) {
   if (this.isModified('questions')) {
     const totalQuestions = this.questions.length;
     const correctAnswers = this.calculateScore();
@@ -115,7 +115,6 @@ VerificationTestSchema.pre('save', function (this: IVerificationTest, next: (err
       }
     }
   }
-  next();
 });
 
 // Indexes
