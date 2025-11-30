@@ -150,19 +150,14 @@ const MyLearnings = () => {
                   onClick={async () => {
                     // Find the chat session for this request
                     try {
-                      const chats = await queryClient.fetchQuery({
-                        queryKey: ['chats'],
-                        queryFn: async () => {
-                          const chatService = (await import('../../services/chat.service')).chatService;
-                          return chatService.getMyChats();
-                        },
-                      });
+                      const { chatService } = await import('../../services/chat.service');
+                      const chats = await chatService.getMyChats();
                       
                       const chatSession = chats.find((chat: any) => {
                         const requestId = typeof chat.requestId === 'string' 
                           ? chat.requestId 
                           : chat.requestId?._id || chat.requestId;
-                        return requestId === learning.requestId;
+                        return String(requestId) === String(learning.requestId);
                       });
                       
                       if (chatSession) {
