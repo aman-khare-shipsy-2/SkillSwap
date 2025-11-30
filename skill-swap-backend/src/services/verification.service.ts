@@ -133,11 +133,20 @@ export const submitTestAnswers = async (data: SubmitTestData): Promise<IVerifica
     answers.forEach((answer) => {
       if (test.questions[answer.questionIndex]) {
         test.questions[answer.questionIndex].userAnswer = answer.answer;
+      } else {
+        console.error('Invalid question index:', answer.questionIndex, 'Total questions:', test.questions.length);
       }
     });
 
     // Mark questions as modified so pre-save hook runs
     test.markModified('questions');
+    
+    console.log('Updated questions with answers:', test.questions.map((q, i) => ({
+      index: i,
+      hasAnswer: q.userAnswer !== undefined,
+      answer: q.userAnswer,
+      correct: q.correctAnswer
+    })));
 
     // Calculate score (pre-save hook will handle this, but we can also do it here)
     const totalQuestions = test.questions.length;
@@ -154,6 +163,12 @@ export const submitTestAnswers = async (data: SubmitTestData): Promise<IVerifica
     // Determine status
     test.status = scorePercentage >= VERIFICATION_PASSING_SCORE ? 'passed' : 'failed';
 
+    console.log('Test status determined:', {
+      scorePercentage,
+      passingScore: VERIFICATION_PASSING_SCORE,
+      status: test.status
+    });
+
     if (test.status === 'passed') {
       test.verifiedAt = new Date();
 
@@ -162,10 +177,13 @@ export const submitTestAnswers = async (data: SubmitTestData): Promise<IVerifica
       if (user && !user.verifiedSkills.some((id) => id.toString() === test.skillId.toString())) {
         user.verifiedSkills.push(test.skillId);
         await user.save();
+        console.log('Added skill to user verifiedSkills:', test.skillId.toString());
       }
     }
 
+    console.log('Saving test...');
     await test.save();
+    console.log('Test saved successfully');
 
     return test;
   } catch (error) {

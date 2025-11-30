@@ -102,18 +102,22 @@ VerificationTestSchema.methods.calculateScore = function (): number {
 // Pre-save hook to update score and status
 // Mongoose 9: async pre-save hooks don't use next callback
 VerificationTestSchema.pre('save', async function (this: IVerificationTest) {
-  if (this.isModified('questions')) {
-    const totalQuestions = this.questions.length;
-    const correctAnswers = this.calculateScore();
-    this.score = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
-    
-    // Determine status based on score (assuming 70% is passing)
-    if (this.status === 'pending' && this.questions.every(q => q.userAnswer !== undefined)) {
-      this.status = this.score >= 70 ? 'passed' : 'failed';
-      if (this.status === 'passed') {
-        this.verifiedAt = new Date();
+  try {
+    if (this.isModified('questions')) {
+      const totalQuestions = this.questions.length;
+      const correctAnswers = this.calculateScore();
+      this.score = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
+      
+      // Only auto-update status if it's still pending and all questions are answered
+      // Otherwise, let the service layer handle status updates
+      if (this.status === 'pending' && this.questions.every(q => q.userAnswer !== undefined)) {
+        // Status will be set by service layer, so we don't override it here
+        // This prevents conflicts between pre-save hook and service layer
       }
     }
+  } catch (error) {
+    console.error('Error in VerificationTest pre-save hook:', error);
+    // Don't throw - let the save continue
   }
 });
 
