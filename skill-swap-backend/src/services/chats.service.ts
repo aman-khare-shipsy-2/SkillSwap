@@ -178,7 +178,23 @@ export const sendMessage = async (data: SendMessageData): Promise<IMessage> => {
   chat.updatedAt = new Date();
   await chat.save();
 
-  return message;
+  // Get the last message (which is the one we just added) with its _id
+  const savedMessage = chat.messages[chat.messages.length - 1];
+  
+  // Convert to plain object with proper serialization
+  const messageObj = savedMessage.toObject ? savedMessage.toObject() : savedMessage;
+  
+  // Ensure senderId is a string
+  if (messageObj.senderId && typeof messageObj.senderId !== 'string') {
+    messageObj.senderId = messageObj.senderId.toString();
+  }
+  
+  // Ensure timestamp is a Date or string
+  if (messageObj.timestamp && !(messageObj.timestamp instanceof Date)) {
+    messageObj.timestamp = new Date(messageObj.timestamp);
+  }
+
+  return messageObj as IMessage;
 };
 
 // Upload file and return URL

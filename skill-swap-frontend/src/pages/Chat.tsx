@@ -69,33 +69,73 @@ const Chat = () => {
     if (!chatId || !user) return;
 
     const socket = initializeSocket();
-    if (!socket) return;
+    if (!socket) {
+      console.warn('Socket not initialized');
+      return;
+    }
 
-    socket.emit('join-chat', { chatId });
+    // Wait for socket to connect before joining
+    const handleConnect = () => {
+      console.log('Socket connected, joining chat:', chatId);
+      socket.emit('join-chat', { chatId });
+    };
+
+    if (socket.connected) {
+      handleConnect();
+    } else {
+      socket.once('connect', handleConnect);
+    }
 
     // Listen for new messages
     const handleNewMessage = (data: { message: Message; chatId: string }) => {
+      console.log('Received new message event:', data);
       if (data.chatId === chatId) {
         queryClient.setQueryData(['chat', chatId], (old: ChatSession | undefined) => {
-          if (!old) return old;
-          // Check if message already exists to avoid duplicates
-          const messageExists = old.messages.some(
-            (msg) => (typeof msg._id === 'string' ? msg._id : msg._id) === (typeof data.message._id === 'string' ? data.message._id : data.message._id)
-          );
-          if (messageExists) return old;
+          if (!old) {
+            console.warn('No old chat data, cannot add message');
+            return old;
+          }
           
+          // Check if message already exists to avoid duplicates
+          const messageId = typeof data.message._id === 'string' 
+            ? data.message._id 
+            : (data.message._id as any)?.toString();
+          
+          const messageExists = old.messages.some((msg) => {
+            const msgId = typeof msg._id === 'string' ? msg._id : (msg._id as any)?.toString();
+            return msgId === messageId;
+          });
+          
+          if (messageExists) {
+            console.log('Message already exists, skipping');
+            return old;
+          }
+          
+          console.log('Adding new message to chat');
           return {
             ...old,
             messages: [...old.messages, data.message],
           };
         });
+      } else {
+        console.log('Message chatId mismatch:', data.chatId, 'expected:', chatId);
       }
     };
 
+    // Listen for socket errors
+    const handleError = (error: any) => {
+      console.error('Socket error:', error);
+      toast.error(error?.message || 'Socket connection error');
+    };
+
     socket.on('new-message', handleNewMessage);
+    socket.on('error', handleError);
 
     return () => {
+      console.log('Cleaning up socket listeners for chat:', chatId);
       socket.off('new-message', handleNewMessage);
+      socket.off('error', handleError);
+      socket.off('connect', handleConnect);
       socket.emit('leave-chat', { chatId });
     };
   }, [chatId, user, queryClient]);

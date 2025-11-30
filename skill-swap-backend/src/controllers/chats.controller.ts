@@ -108,11 +108,26 @@ export const sendMessageController = async (
 
     // Emit socket event to notify all participants in the chat room
     if (io) {
+      // Serialize message properly
+      const messageData = {
+        _id: (message as any)._id?.toString() || (message as any).id?.toString(),
+        senderId: typeof (message as any).senderId === 'string' 
+          ? (message as any).senderId 
+          : (message as any).senderId?.toString(),
+        type: message.type,
+        text: message.text,
+        contentURL: message.contentURL,
+        timestamp: message.timestamp instanceof Date 
+          ? message.timestamp.toISOString() 
+          : new Date(message.timestamp).toISOString(),
+      };
+
       io.to(`chat:${id}`).emit('new-message', {
-        message,
+        message: messageData,
         chatId: id,
       });
-      console.log('Socket event emitted for chat:', id);
+      console.log('Socket event emitted for chat:', id, 'to room:', `chat:${id}`);
+      console.log('Message data:', messageData);
     } else {
       console.warn('Socket.io not initialized, real-time updates may not work');
     }

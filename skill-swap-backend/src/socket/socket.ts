@@ -72,10 +72,18 @@ export const initializeSocket = (httpServer: HTTPServer): SocketIOServer => {
     }
 
     // Join chat room
-    socket.on('join-chat', async (chatId: string) => {
+    socket.on('join-chat', async (data: { chatId: string } | string) => {
       try {
         if (!socket.userId) {
           socket.emit('error', { message: 'Not authenticated' });
+          return;
+        }
+
+        // Handle both object and string format
+        const chatId = typeof data === 'string' ? data : data.chatId;
+        
+        if (!chatId) {
+          socket.emit('error', { message: 'Chat ID is required' });
           return;
         }
 
@@ -110,9 +118,12 @@ export const initializeSocket = (httpServer: HTTPServer): SocketIOServer => {
     });
 
     // Leave chat room
-    socket.on('leave-chat', (chatId: string) => {
-      socket.leave(`chat:${chatId}`);
-      logger.info(`User ${socket.userId} left chat ${chatId}`);
+    socket.on('leave-chat', (data: { chatId: string } | string) => {
+      const chatId = typeof data === 'string' ? data : data.chatId;
+      if (chatId) {
+        socket.leave(`chat:${chatId}`);
+        logger.info(`User ${socket.userId} left chat ${chatId}`);
+      }
 
       // Notify other participants
       socket.to(`chat:${chatId}`).emit('user-left', {
@@ -145,11 +156,27 @@ export const initializeSocket = (httpServer: HTTPServer): SocketIOServer => {
           contentURL,
         });
 
+        // Serialize message properly
+        const messageData = {
+          _id: (message as any)._id?.toString() || (message as any).id?.toString(),
+          senderId: typeof (message as any).senderId === 'string' 
+            ? (message as any).senderId 
+            : (message as any).senderId?.toString(),
+          type: message.type,
+          text: message.text,
+          contentURL: message.contentURL,
+          timestamp: message.timestamp instanceof Date 
+            ? message.timestamp.toISOString() 
+            : new Date(message.timestamp).toISOString(),
+        };
+
         // Emit message to all participants in the chat room
         io.to(`chat:${chatId}`).emit('new-message', {
-          message,
+          message: messageData,
           chatId,
         });
+        
+        logger.info(`Message emitted to chat ${chatId}`, { messageId: messageData._id });
 
         // Acknowledge message receipt
         socket.emit('message-sent', {
