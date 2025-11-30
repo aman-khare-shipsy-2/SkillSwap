@@ -1,4 +1,5 @@
 import ChatSession, { IChatSession, IMessage } from '../models/ChatSession';
+import User from '../models/User';
 import { ERROR_MESSAGES, VALIDATION_RULES } from '../utils/constants';
 import mongoose from 'mongoose';
 
@@ -221,7 +222,15 @@ export const endChatSession = async (chatId: string, userId: string): Promise<IC
     throw new Error(ERROR_MESSAGES.INVALID_INPUT);
   }
 
-  const chat = await ChatSession.findById(chatId);
+  const chat = await ChatSession.findById(chatId).populate({
+    path: 'requestId',
+    populate: [
+      { path: 'senderId', select: '_id' },
+      { path: 'receiverId', select: '_id' },
+      { path: 'offeredSkillId', select: '_id' },
+      { path: 'requestedSkillId', select: '_id' },
+    ],
+  });
   if (!chat) {
     throw new Error(ERROR_MESSAGES.CHAT_NOT_FOUND);
   }
@@ -235,9 +244,49 @@ export const endChatSession = async (chatId: string, userId: string): Promise<IC
     throw new Error(ERROR_MESSAGES.NOT_CHAT_PARTICIPANT);
   }
 
-  // Set endedAt timestamp
-  chat.endedAt = new Date();
-  await chat.save();
+  // Only update if session hasn't ended yet
+  if (!chat.endedAt) {
+    // Set endedAt timestamp
+    chat.endedAt = new Date();
+    await chat.save();
+
+    // Update user analytics: increment totalSessionsTaught and totalSkillsLearnt
+    if (chat.requestId) {
+      const request = chat.requestId as any;
+      const senderId = typeof request.senderId === 'object' ? request.senderId._id : request.senderId;
+      const receiverId = typeof request.receiverId === 'object' ? request.receiverId._id : request.receiverId;
+      const offeredSkillId = typeof request.offeredSkillId === 'object' ? request.offeredSkillId._id : request.offeredSkillId;
+      const requestedSkillId = typeof request.requestedSkillId === 'object' ? request.requestedSkillId._id : request.requestedSkillId;
+
+      // Update sender: increment totalSessionsTaught (they taught the offered skill)
+      if (senderId) {
+        await User.findByIdAndUpdate(senderId, {
+          $inc: { totalSessionsTaught: 1 },
+        });
+      }
+
+      // Update receiver: increment totalSessionsTaught (they taught the requested skill)
+      if (receiverId) {
+        await User.findByIdAndUpdate(receiverId, {
+          $inc: { totalSessionsTaught: 1 },
+        });
+      }
+
+      // Update sender: increment totalSkillsLearnt (they learnt the requested skill)
+      if (senderId && requestedSkillId) {
+        await User.findByIdAndUpdate(senderId, {
+          $inc: { totalSkillsLearnt: 1 },
+        });
+      }
+
+      // Update receiver: increment totalSkillsLearnt (they learnt the offered skill)
+      if (receiverId && offeredSkillId) {
+        await User.findByIdAndUpdate(receiverId, {
+          $inc: { totalSkillsLearnt: 1 },
+        });
+      }
+    }
+  }
 
   await chat.populate([
     { path: 'participants', select: 'name email profilePictureURL' },

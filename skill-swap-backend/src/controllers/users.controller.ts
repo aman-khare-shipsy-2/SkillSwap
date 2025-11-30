@@ -3,6 +3,7 @@ import { Request, Response, NextFunction } from 'express';
 import User from '../models/User';
 import Skill from '../models/Skill';
 import Analytics from '../models/Analytics';
+import ChatSession from '../models/ChatSession';
 import { sendSuccess, sendError } from '../utils/responses';
 import { ERROR_MESSAGES, HTTP_STATUS, SUCCESS_MESSAGES } from '../utils/constants';
 import { isPredefinedSkill } from '../utils/predefinedSkills';
@@ -310,10 +311,53 @@ export const getUserAnalytics = async (
       return;
     }
 
+    // Calculate total sessions from chat sessions (more accurate)
+    const totalSessions = await ChatSession.countDocuments({
+      participants: req.user!._id,
+      endedAt: { $ne: null }, // Only count ended sessions
+    });
+
+    // Calculate total skills learnt from completed chat sessions
+    const completedSessions = await ChatSession.find({
+      participants: req.user!._id,
+      endedAt: { $ne: null },
+    })
+      .populate({
+        path: 'requestId',
+        populate: [
+          { path: 'senderId', select: '_id' },
+          { path: 'receiverId', select: '_id' },
+          { path: 'offeredSkillId', select: '_id' },
+          { path: 'requestedSkillId', select: '_id' },
+        ],
+      })
+      .lean();
+
+    // Count unique skills learnt
+    const skillsLearntSet = new Set<string>();
+    completedSessions.forEach((session: any) => {
+      if (session.requestId) {
+        const request = session.requestId;
+        const senderId = typeof request.senderId === 'object' ? request.senderId._id.toString() : request.senderId?.toString();
+        const receiverId = typeof request.receiverId === 'object' ? request.receiverId._id.toString() : request.receiverId?.toString();
+        const offeredSkillId = typeof request.offeredSkillId === 'object' ? request.offeredSkillId._id.toString() : request.offeredSkillId?.toString();
+        const requestedSkillId = typeof request.requestedSkillId === 'object' ? request.requestedSkillId._id.toString() : request.requestedSkillId?.toString();
+
+        // If user is sender, they learnt the requested skill
+        if (senderId === req.user!._id.toString() && requestedSkillId) {
+          skillsLearntSet.add(requestedSkillId);
+        }
+        // If user is receiver, they learnt the offered skill
+        if (receiverId === req.user!._id.toString() && offeredSkillId) {
+          skillsLearntSet.add(offeredSkillId);
+        }
+      }
+    });
+
     const analyticsData = {
       averageRating: user.averageRating,
-      totalSessionsTaught: user.totalSessionsTaught,
-      totalSkillsLearnt: user.totalSkillsLearnt,
+      totalSessionsTaught: totalSessions || user.totalSessionsTaught || 0,
+      totalSkillsLearnt: skillsLearntSet.size || user.totalSkillsLearnt || 0,
       ratingsTrend: analytics?.ratingsTrend || [],
       sessionsPerMonth: analytics?.sessionsPerMonth || [],
     };

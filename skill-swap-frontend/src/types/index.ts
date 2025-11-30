@@ -108,16 +108,24 @@ export interface Answer {
 
 // Analytics Types
 export interface Analytics {
-  _id: string;
-  userId: User | string;
+  _id?: string;
+  userId?: User | string;
   skillId?: Skill | string;
+  averageRating: number;
+  totalSessionsTaught: number;
+  totalSkillsLearnt: number;
   ratingsTrend: Array<{
     rating: number;
-    timestamp: string;
+    skill?: string | Skill;
+    sessionId?: string;
+    timestamp: string | Date;
   }>;
-  sessionsPerMonth: number;
-  totalRatingAverage: number;
-  updatedAt: string;
+  sessionsPerMonth: Array<{
+    month: string;
+    count: number;
+  }>;
+  totalRatingAverage?: number;
+  updatedAt?: string;
 }
 
 // API Response Types

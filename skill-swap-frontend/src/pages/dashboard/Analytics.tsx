@@ -25,11 +25,18 @@ const Analytics = () => {
   }
 
   // Prepare chart data from ratingsTrend
-  const chartData = analytics?.ratingsTrend?.map((rating, index) => ({
-    name: `Rating ${index + 1}`,
-    rating: rating.rating,
-    date: new Date(rating.timestamp).toLocaleDateString(),
-  })) || [];
+  const chartData = analytics?.ratingsTrend
+    ?.filter((rating) => {
+      // Filter by selected skill if not "all"
+      if (selectedSkill === 'all') return true;
+      const skillId = typeof rating.skill === 'string' ? rating.skill : rating.skill?._id;
+      return skillId === selectedSkill;
+    })
+    .map((rating, index) => ({
+      name: `Rating ${index + 1}`,
+      rating: rating.rating,
+      date: new Date(rating.timestamp).toLocaleDateString(),
+    })) || [];
 
   return (
     <div className="space-y-6">
@@ -38,19 +45,19 @@ const Analytics = () => {
         <div className="card card-hover">
           <h3 className="text-sm font-medium text-text-secondary">Average Rating</h3>
           <p className="text-3xl font-bold text-text-primary mt-2">
-            {profile?.averageRating.toFixed(1) || '0.0'}
+            {analytics?.averageRating?.toFixed(1) || profile?.averageRating?.toFixed(1) || '0.0'}
           </p>
         </div>
         <div className="card card-hover">
           <h3 className="text-sm font-medium text-text-secondary">Total Sessions</h3>
           <p className="text-3xl font-bold text-text-primary mt-2">
-            {profile?.totalSessionsTaught || 0}
+            {analytics?.totalSessionsTaught ?? profile?.totalSessionsTaught ?? 0}
           </p>
         </div>
         <div className="card card-hover">
           <h3 className="text-sm font-medium text-text-secondary">Skills Learnt</h3>
           <p className="text-3xl font-bold text-text-primary mt-2">
-            {profile?.totalSkillsLearnt || 0}
+            {analytics?.totalSkillsLearnt ?? profile?.totalSkillsLearnt ?? 0}
           </p>
         </div>
       </div>
