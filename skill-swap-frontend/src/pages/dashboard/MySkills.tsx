@@ -80,10 +80,8 @@ const MySkills = () => {
               offeredSkills.map((skill) => {
                 const skillObj = typeof skill === 'string' ? null : skill;
                 const skillId = typeof skill === 'string' ? skill : skill._id;
-                // Check if skill is verified (handle both string and ObjectId formats)
-                const isVerified = verifiedSkills.some(
-                  (verifiedId) => verifiedId.toString() === skillId.toString()
-                );
+                // verifiedSkills are now returned as strings from backend
+                const isVerified = verifiedSkills.includes(skillId);
 
                 return (
                   <tr key={skillId} className="hover:bg-surface-elevation transition-colors">
