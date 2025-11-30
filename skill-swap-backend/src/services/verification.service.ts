@@ -48,58 +48,81 @@ export const startVerificationTest = async (
   userId: string,
   skillId: string
 ): Promise<TestWithQuestions> => {
-  if (!mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid(skillId)) {
-    throw new Error(ERROR_MESSAGES.INVALID_INPUT);
-  }
+  try {
+    console.log('startVerificationTest called:', { userId, skillId });
 
-  // Check if user already verified for this skill
-  const user = await User.findById(userId);
-  if (!user) {
-    throw new Error(ERROR_MESSAGES.USER_NOT_FOUND);
-  }
+    if (!mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid(skillId)) {
+      console.error('Invalid ObjectId:', { userId, skillId });
+      throw new Error(ERROR_MESSAGES.INVALID_INPUT);
+    }
 
-  if (user.verifiedSkills.some((id) => id.toString() === skillId)) {
-    throw new Error('User is already verified for this skill');
-  }
+    // Check if user already verified for this skill
+    console.log('Finding user:', userId);
+    const user = await User.findById(userId);
+    if (!user) {
+      console.error('User not found:', userId);
+      throw new Error(ERROR_MESSAGES.USER_NOT_FOUND);
+    }
 
-  // Check for existing pending test
-  const existingTest = await VerificationTest.findOne({
-    userId,
-    skillId,
-    status: 'pending',
-  });
+    if (user.verifiedSkills.some((id) => id.toString() === skillId)) {
+      console.log('User already verified for skill:', skillId);
+      throw new Error('User is already verified for this skill');
+    }
 
-  if (existingTest) {
-    // Return existing test without correct answers
-    const testWithoutAnswers = existingTest.toObject();
+    // Check for existing pending test
+    console.log('Checking for existing test:', { userId, skillId });
+    const existingTest = await VerificationTest.findOne({
+      userId,
+      skillId,
+      status: 'pending',
+    });
+
+    if (existingTest) {
+      console.log('Returning existing test');
+      // Return existing test without correct answers
+      const testWithoutAnswers = existingTest.toObject();
+      testWithoutAnswers.questions = testWithoutAnswers.questions.map((q: IQuestion) => ({
+        text: q.text,
+        options: q.options,
+      })) as IQuestion[];
+      return testWithoutAnswers as TestWithQuestions;
+    }
+
+    // Generate test questions
+    console.log('Generating questions for skill:', skillId);
+    const questions = await generateTestQuestions(skillId);
+    console.log('Generated questions:', questions.length);
+
+    // Create verification test
+    console.log('Creating verification test');
+    const test = new VerificationTest({
+      userId,
+      skillId,
+      questions,
+      status: 'pending',
+    });
+
+    console.log('Saving test to database');
+    await test.save();
+    console.log('Test saved successfully:', test._id);
+
+    // Return test without correct answers
+    const testWithoutAnswers = test.toObject();
     testWithoutAnswers.questions = testWithoutAnswers.questions.map((q: IQuestion) => ({
       text: q.text,
       options: q.options,
     })) as IQuestion[];
+
+    console.log('Returning test without answers');
     return testWithoutAnswers as TestWithQuestions;
+  } catch (error) {
+    console.error('Error in startVerificationTest:', error);
+    if (error instanceof Error) {
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+    }
+    throw error;
   }
-
-  // Generate test questions
-  const questions = await generateTestQuestions(skillId);
-
-  // Create verification test
-  const test = new VerificationTest({
-    userId,
-    skillId,
-    questions,
-    status: 'pending',
-  });
-
-  await test.save();
-
-  // Return test without correct answers
-  const testWithoutAnswers = test.toObject();
-  testWithoutAnswers.questions = testWithoutAnswers.questions.map((q: IQuestion) => ({
-    text: q.text,
-    options: q.options,
-  })) as IQuestion[];
-
-  return testWithoutAnswers as TestWithQuestions;
 };
 
 // Submit test answers
