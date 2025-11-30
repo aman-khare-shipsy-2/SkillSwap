@@ -96,13 +96,22 @@ const Chat = () => {
         sessionId: data.sessionId || chatId,
       });
     },
-    onSuccess: () => {
+    onSuccess: (rating) => {
       // Invalidate all relevant queries to update dashboard
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       queryClient.invalidateQueries({ queryKey: ['analytics'] });
       queryClient.invalidateQueries({ queryKey: ['chats'] });
       queryClient.invalidateQueries({ queryKey: ['requests', 'accepted'] });
-      toast.success('Rating submitted successfully!');
+      queryClient.invalidateQueries({ queryKey: ['ratings', 'me'] });
+      
+      // Check if this was an existing rating (idempotent behavior)
+      const isExisting = rating && (rating as any)._id;
+      if (isExisting) {
+        toast.success('Rating already exists for this session');
+      } else {
+        toast.success('Rating submitted successfully!');
+      }
+      
       setShowRatingModal(false);
       navigate('/dashboard');
     },
