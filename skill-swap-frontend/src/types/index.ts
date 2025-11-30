@@ -101,8 +101,9 @@ export interface Question {
 }
 
 export interface Answer {
-  questionId: string;
-  answer: string;
+  questionId?: string; // Optional for backward compatibility
+  questionIndex?: number; // Backend uses questionIndex
+  answer: string | number;
 }
 
 // Analytics Types

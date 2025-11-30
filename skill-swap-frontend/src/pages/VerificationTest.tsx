@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { verificationService } from '../services/verification.service';
 import toast from 'react-hot-toast';
-import type { VerificationTest, Answer } from '../types';
+import type { VerificationTest } from '../types';
 
 const VerificationTest = () => {
   const { skillId } = useParams<{ skillId: string }>();
@@ -19,7 +19,7 @@ const VerificationTest = () => {
   });
 
   const submitMutation = useMutation({
-    mutationFn: (data: { testId: string; answers: Answer[] }) =>
+    mutationFn: (data: { testId: string; answers: Array<{ questionIndex: number; answer: string | number }> }) =>
       verificationService.submitTest(data),
     onSuccess: (result) => {
       if (result.status === 'passed') {

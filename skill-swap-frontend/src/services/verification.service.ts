@@ -1,6 +1,6 @@
 import api from './api';
 import { API_ENDPOINTS } from '../constants';
-import type { ApiResponse, VerificationTest, Answer } from '../types';
+import type { ApiResponse, VerificationTest } from '../types';
 
 export const verificationService = {
   // Start verification test
