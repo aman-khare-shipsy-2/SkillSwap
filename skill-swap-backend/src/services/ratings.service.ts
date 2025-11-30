@@ -60,7 +60,20 @@ export const createRating = async (data: CreateRatingData): Promise<IRating> => 
     });
 
     if (existingRating) {
-      throw new Error(ERROR_MESSAGES.ALREADY_RATED);
+      console.log('Rating already exists for this session:', {
+        ratingId: existingRating._id,
+        ratedUserId,
+        ratedById,
+        sessionId,
+      });
+      // Return existing rating instead of throwing error
+      await existingRating.populate([
+        { path: 'ratedUserId', select: 'name email profilePictureURL' },
+        { path: 'ratedById', select: 'name email profilePictureURL' },
+        { path: 'skillId', select: 'name category' },
+        { path: 'sessionId', select: 'requestId' },
+      ]);
+      return existingRating;
     }
   }
 

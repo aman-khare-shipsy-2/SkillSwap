@@ -58,13 +58,31 @@ const Chat = () => {
     },
   });
 
+  // Check if rating already exists for this session
+  const { data: existingRatings } = useQuery({
+    queryKey: ['ratings', 'me'],
+    queryFn: () => ratingService.getMyRatings(),
+    enabled: !!user && !!chatId,
+  });
+
   const endChatMutation = useMutation({
     mutationFn: () => chatService.endChatSession(chatId!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chats'] });
       queryClient.invalidateQueries({ queryKey: ['requests', 'accepted'] });
-      // Show rating modal instead of navigating immediately
-      setShowRatingModal(true);
+      queryClient.invalidateQueries({ queryKey: ['ratings', 'me'] });
+      
+      // Check if rating already exists before showing modal
+      const hasRated = existingRatings?.given?.some(
+        (rating: any) => rating.sessionId === chatId || rating.sessionId?._id === chatId
+      );
+      
+      if (!hasRated) {
+        setShowRatingModal(true);
+      } else {
+        toast.success('You have already rated this session');
+        navigate('/dashboard');
+      }
     },
   });
 
@@ -92,7 +110,15 @@ const Chat = () => {
       console.error('Rating submission error:', error);
       console.error('Error response:', error?.response);
       const errorMessage = error?.response?.data?.message || error?.message || 'Failed to submit rating';
-      toast.error(errorMessage);
+      
+      // If already rated, close modal and navigate
+      if (errorMessage.includes('already rated') || errorMessage.includes('ALREADY_RATED')) {
+        toast.success('You have already rated this session');
+        setShowRatingModal(false);
+        navigate('/dashboard');
+      } else {
+        toast.error(errorMessage);
+      }
     },
   });
 
@@ -155,14 +181,29 @@ const Chat = () => {
     };
 
     // Listen for session ended event
-    const handleSessionEnded = (data: { chatId: string; endedBy: string }) => {
+    const handleSessionEnded = async (data: { chatId: string; endedBy: string }) => {
       console.log('Session ended event received:', data);
       if (data.chatId === chatId) {
-        // Show rating modal when session is ended by other participant
-        setShowRatingModal(true);
         queryClient.invalidateQueries({ queryKey: ['chats'] });
         queryClient.invalidateQueries({ queryKey: ['requests', 'accepted'] });
-        toast('Session ended. Please rate your experience.', { icon: 'ℹ️' });
+        queryClient.invalidateQueries({ queryKey: ['ratings', 'me'] });
+        
+        // Check if rating already exists
+        const ratings = await queryClient.fetchQuery({
+          queryKey: ['ratings', 'me'],
+          queryFn: () => ratingService.getMyRatings(),
+        });
+        
+        const hasRated = ratings?.given?.some(
+          (rating: any) => rating.sessionId === chatId || rating.sessionId?._id === chatId
+        );
+        
+        if (!hasRated) {
+          setShowRatingModal(true);
+          toast('Session ended. Please rate your experience.', { icon: 'ℹ️' });
+        } else {
+          toast('Session ended. You have already rated this session.');
+        }
       }
     };
 
