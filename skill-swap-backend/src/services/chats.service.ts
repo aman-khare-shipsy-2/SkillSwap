@@ -244,8 +244,10 @@ export const endChatSession = async (chatId: string, userId: string): Promise<IC
     {
       path: 'requestId',
       populate: [
-        { path: 'offeredSkillId', select: 'name category' },
-        { path: 'requestedSkillId', select: 'name category' },
+        { path: 'senderId', select: 'name email _id' },
+        { path: 'receiverId', select: 'name email _id' },
+        { path: 'offeredSkillId', select: 'name category _id' },
+        { path: 'requestedSkillId', select: 'name category _id' },
       ],
     },
   ]);
