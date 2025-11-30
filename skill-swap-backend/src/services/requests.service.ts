@@ -48,9 +48,16 @@ export const createRequest = async (data: CreateRequestData): Promise<ISkillRequ
     throw new Error('Receiver does not offer the skill you want to learn');
   }
 
-  // Validate receiver wants to learn the skill sender offers
-  if (!receiver.desiredSkills.some((id) => id.toString() === offeredSkillId)) {
-    throw new Error('Receiver does not want to learn the skill you offer');
+  // Validate receiver wants to learn at least one of the sender's offered skills
+  // This allows requests even if the specific offeredSkillId isn't what receiver wants,
+  // as long as receiver wants at least one of sender's offered skills (matching search criteria)
+  const senderOfferedSkillIds = sender.offeredSkills.map((id) => id.toString());
+  const receiverWantsAnySenderSkill = receiver.desiredSkills.some((id) =>
+    senderOfferedSkillIds.includes(id.toString())
+  );
+
+  if (!receiverWantsAnySenderSkill) {
+    throw new Error('Receiver does not want to learn any of the skills you offer');
   }
 
   // Check for existing pending request between these users for same skills
