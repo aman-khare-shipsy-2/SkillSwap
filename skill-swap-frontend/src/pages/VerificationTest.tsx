@@ -47,10 +47,15 @@ const VerificationTest = () => {
   const handleSubmit = () => {
     if (!test) return;
 
-    const answersArray: Answer[] = test.questions.map((q) => ({
-      questionId: q._id || '',
-      answer: answers[q._id || ''] || '',
-    }));
+    // Convert answers to backend format (questionIndex instead of questionId)
+    const answersArray = test.questions.map((q, index) => {
+      const questionKey = q._id || index.toString();
+      const answer = answers[questionKey] || '';
+      return {
+        questionIndex: index,
+        answer: answer,
+      };
+    });
 
     if (answersArray.some((a) => !a.answer)) {
       toast.error('Please answer all questions');
@@ -102,7 +107,7 @@ const VerificationTest = () => {
         {/* Question Card */}
         <div className="bg-white shadow rounded-lg p-6 mb-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">
-            {currentQuestion.question}
+            {currentQuestion.text || currentQuestion.question}
           </h2>
 
           <div className="space-y-3">

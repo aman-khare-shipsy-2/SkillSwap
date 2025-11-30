@@ -15,7 +15,7 @@ export const verificationService = {
   // Submit test answers
   submitTest: async (data: {
     testId: string;
-    answers: Answer[];
+    answers: Array<{ questionIndex: number; answer: string | number }>;
   }): Promise<VerificationTest> => {
     const response = await api.post<ApiResponse<VerificationTest>>(
       API_ENDPOINTS.SUBMIT_TEST,

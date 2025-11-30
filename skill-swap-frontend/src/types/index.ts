@@ -93,10 +93,11 @@ export interface VerificationTest {
 
 export interface Question {
   _id?: string;
-  question: string;
+  question?: string; // For backward compatibility
+  text?: string; // Backend uses 'text' field
   options: string[];
-  correctAnswer: string;
-  type: 'multiple-choice' | 'true-false';
+  correctAnswer?: string; // Not included in test response
+  type?: 'multiple-choice' | 'true-false';
 }
 
 export interface Answer {
