@@ -155,11 +155,19 @@ export const errorHandler = (
 
   // Handle unknown errors
   logger.error('Unknown error occurred:', err, errorContext);
+  
+  // Always log full error details to console for debugging
+  console.error('=== ERROR DETAILS ===');
+  console.error('Error name:', err.name);
+  console.error('Error message:', err.message);
+  console.error('Error stack:', err.stack);
+  console.error('Request context:', errorContext);
+  console.error('===================');
 
   const statusCode = (err as AppError).statusCode || HTTP_STATUS.INTERNAL_SERVER_ERROR;
   const message = err.message || ERROR_MESSAGES.INTERNAL_ERROR;
 
-  // Don't expose internal error details in production
+  // Don't expose internal error details in production to client, but log everything
   const errorMessage =
     process.env.NODE_ENV === 'production' && statusCode === HTTP_STATUS.INTERNAL_SERVER_ERROR
       ? ERROR_MESSAGES.INTERNAL_ERROR
