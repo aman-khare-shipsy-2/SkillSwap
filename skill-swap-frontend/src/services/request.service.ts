@@ -43,13 +43,26 @@ export const requestService = {
   // Search users for skill exchange
   searchUsers: async (params: {
     requestedSkillId: string;
-    offeredSkillId: string;
+    offeredSkillIds: string | string[]; // Changed to accept array or comma-separated string
     page?: number;
     limit?: number;
   }): Promise<PaginatedUsers> => {
+    // Convert array to comma-separated string if needed for query params
+    const queryParams: any = {
+      requestedSkillId: params.requestedSkillId,
+      page: params.page,
+      limit: params.limit,
+    };
+    
+    if (Array.isArray(params.offeredSkillIds)) {
+      queryParams.offeredSkillIds = params.offeredSkillIds.join(',');
+    } else {
+      queryParams.offeredSkillIds = params.offeredSkillIds;
+    }
+    
     const response = await api.get<ApiResponse<User[]>>(
       API_ENDPOINTS.SEARCH_USERS,
-      { params }
+      { params: queryParams }
     );
     const pagination = response.data.pagination || { total: 0, page: 1, limit: 10, pages: 1 };
     return {

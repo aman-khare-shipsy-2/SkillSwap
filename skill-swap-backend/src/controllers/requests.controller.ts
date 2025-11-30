@@ -132,28 +132,47 @@ export const searchUsersController = async (
       return;
     }
 
-    const { requestedSkillId, offeredSkillId } = req.query;
+    const { requestedSkillId, offeredSkillIds } = req.query;
     const page = parseInt(req.query.page as string, 10) || 1;
     const limit = parseInt(req.query.limit as string, 10) || 10;
 
     console.log('Search users request:', {
       userId: req.userId,
       requestedSkillId,
-      offeredSkillId,
+      offeredSkillIds,
       page,
       limit,
       queryKeys: Object.keys(req.query),
     });
 
-    if (!requestedSkillId || !offeredSkillId) {
-      console.error('Missing required fields:', { requestedSkillId, offeredSkillId });
+    if (!requestedSkillId || !offeredSkillIds) {
+      console.error('Missing required fields:', { requestedSkillId, offeredSkillIds });
+      sendError(res, ERROR_MESSAGES.MISSING_REQUIRED_FIELDS, HTTP_STATUS.BAD_REQUEST);
+      return;
+    }
+
+    // Handle offeredSkillIds as array (can be comma-separated string or array)
+    let offeredSkillIdsArray: string[] = [];
+    if (Array.isArray(offeredSkillIds)) {
+      offeredSkillIdsArray = offeredSkillIds as string[];
+    } else if (typeof offeredSkillIds === 'string') {
+      // Split comma-separated string into array
+      offeredSkillIdsArray = offeredSkillIds.split(',').map((id) => id.trim()).filter((id) => id.length > 0);
+    } else {
+      console.error('Invalid offeredSkillIds format:', offeredSkillIds);
+      sendError(res, ERROR_MESSAGES.INVALID_INPUT, HTTP_STATUS.BAD_REQUEST);
+      return;
+    }
+
+    if (offeredSkillIdsArray.length === 0) {
+      console.error('No valid offered skill IDs provided');
       sendError(res, ERROR_MESSAGES.MISSING_REQUIRED_FIELDS, HTTP_STATUS.BAD_REQUEST);
       return;
     }
 
     const result = await searchUsersForSkillExchange(
       requestedSkillId as string,
-      offeredSkillId as string,
+      offeredSkillIdsArray, // Pass array of offered skill IDs
       req.userId, // Pass userId to exclude current user
       page,
       limit

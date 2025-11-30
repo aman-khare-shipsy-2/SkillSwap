@@ -58,16 +58,21 @@ const SearchBar = () => {
 
       setSelectedSkill(skill);
 
-      // Get user's first offered skill (for now - can be improved)
-      const userOfferedSkillId =
-        typeof user.offeredSkills[0] === 'string'
-          ? user.offeredSkills[0]
-          : user.offeredSkills[0]._id;
+      // Get all user's offered skills (not just the first one)
+      const userOfferedSkillIds = user.offeredSkills.map((skill) =>
+        typeof skill === 'string' ? skill : skill._id
+      );
+
+      if (userOfferedSkillIds.length === 0) {
+        toast.error('Please add at least one offered skill to your profile');
+        setShowResults(false);
+        return;
+      }
 
       // Search for users offering this skill
       const usersResult = await requestService.searchUsers({
         requestedSkillId: skill._id,
-        offeredSkillId: userOfferedSkillId,
+        offeredSkillIds: userOfferedSkillIds, // Pass all offered skill IDs
         limit: 10,
       });
 
@@ -75,7 +80,7 @@ const SearchBar = () => {
         usersFound: usersResult.users.length,
         total: usersResult.total,
         requestedSkill: skill.name,
-        offeredSkill: user.offeredSkills[0],
+        offeredSkills: userOfferedSkillIds,
       });
 
       setSearchResults(usersResult.users);

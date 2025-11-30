@@ -280,16 +280,26 @@ export const expireRequests = async (): Promise<number> => {
 // Search users for skill exchange with pagination
 export const searchUsersForSkillExchange = async (
   requestedSkillId: string,
-  userOfferedSkillId: string,
+  userOfferedSkillIds: string[], // Changed to array to accept all offered skills
   userId: string, // Add userId to exclude current user
   page: number = 1,
   limit: number = 10
 ): Promise<{ users: IUser[]; total: number; page: number; limit: number; totalPages: number }> => {
   if (
     !mongoose.Types.ObjectId.isValid(requestedSkillId) ||
-    !mongoose.Types.ObjectId.isValid(userOfferedSkillId) ||
-    !mongoose.Types.ObjectId.isValid(userId)
+    !mongoose.Types.ObjectId.isValid(userId) ||
+    !Array.isArray(userOfferedSkillIds) ||
+    userOfferedSkillIds.length === 0
   ) {
+    throw new Error(ERROR_MESSAGES.INVALID_INPUT);
+  }
+
+  // Validate all offered skill IDs
+  const validOfferedSkillIds = userOfferedSkillIds.filter((id) =>
+    mongoose.Types.ObjectId.isValid(id)
+  );
+
+  if (validOfferedSkillIds.length === 0) {
     throw new Error(ERROR_MESSAGES.INVALID_INPUT);
   }
 
@@ -298,20 +308,25 @@ export const searchUsersForSkillExchange = async (
 
   console.log('Search users for skill exchange:', {
     requestedSkillId,
-    userOfferedSkillId,
+    userOfferedSkillIds: validOfferedSkillIds,
     userId,
     page,
     limit: actualLimit,
   });
 
+  // Convert offered skill IDs to ObjectIds
+  const offeredSkillObjectIds = validOfferedSkillIds.map(
+    (id) => new mongoose.Types.ObjectId(id)
+  );
+
   // Find users who:
   // 1. Offer the skill the user wants to learn (requestedSkillId)
-  // 2. Want to learn the skill the user offers (userOfferedSkillId)
+  // 2. Want to learn ANY of the skills the user offers (userOfferedSkillIds) - using $in
   // 3. Are active
   // 4. Are not the current user
   const searchQuery = {
     offeredSkills: new mongoose.Types.ObjectId(requestedSkillId),
-    desiredSkills: new mongoose.Types.ObjectId(userOfferedSkillId),
+    desiredSkills: { $in: offeredSkillObjectIds }, // Check if any of user's offered skills are in their desired skills
     isActive: true,
     _id: { $ne: new mongoose.Types.ObjectId(userId) }, // Exclude current user
   };
@@ -333,7 +348,7 @@ export const searchUsersForSkillExchange = async (
     total,
     found: users.length,
     requestedSkillId,
-    userOfferedSkillId,
+    userOfferedSkillIds: validOfferedSkillIds,
   });
 
   return {
