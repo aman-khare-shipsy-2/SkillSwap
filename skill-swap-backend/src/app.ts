@@ -45,6 +45,15 @@ if (config.nodeEnv === 'development') {
   app.use(morgan('combined'));
 }
 
+// Root health check (for Render health checks)
+app.get('/', (_req, res) => {
+  res.status(200).json({
+    status: 'OK',
+    message: 'Skill Swap API is running',
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // API routes
 import apiRoutes from './routes';
 app.use('/api', apiRoutes);
