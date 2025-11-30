@@ -70,6 +70,16 @@ export const sendMessageController = async (
     const { id } = req.params;
     const { type, text, contentURL } = req.body;
 
+    console.log('Send message request:', {
+      chatId: id,
+      userId: req.userId,
+      type,
+      hasText: !!text,
+      hasContentURL: !!contentURL,
+      hasFile: !!req.file,
+      bodyKeys: Object.keys(req.body),
+    });
+
     if (!type) {
       sendError(res, ERROR_MESSAGES.MISSING_REQUIRED_FIELDS, HTTP_STATUS.BAD_REQUEST);
       return;
@@ -90,11 +100,17 @@ export const sendMessageController = async (
       contentURL: fileURL,
     });
 
+    console.log('Message sent successfully:', {
+      messageId: (message as any)._id,
+      type: message.type,
+    });
+
     // Socket.io event will be handled by the socket handler
     // The message is already saved to the database above
 
     sendSuccess(res, message, SUCCESS_MESSAGES.MESSAGE_SENT);
   } catch (error) {
+    console.error('Error in sendMessageController:', error);
     next(error);
   }
 };
