@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { verificationService } from '../services/verification.service';
 import toast from 'react-hot-toast';
 import type { VerificationTest } from '../types';
@@ -18,14 +18,19 @@ const VerificationTest = () => {
     enabled: !!skillId,
   });
 
+  const queryClient = useQueryClient();
+
   const submitMutation = useMutation({
     mutationFn: (data: { testId: string; answers: Array<{ questionIndex: number; answer: string | number }> }) =>
       verificationService.submitTest(data),
     onSuccess: (result) => {
+      // Invalidate profile query to refresh verified skills
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      
       if (result.status === 'passed') {
-        toast.success(`Test passed! Score: ${result.score}/${result.questions.length}`);
+        toast.success(`Test passed! Score: ${result.score?.toFixed(0) || 0}%`);
       } else {
-        toast.error(`Test failed. Score: ${result.score}/${result.questions.length}`);
+        toast.error(`Test failed. Score: ${result.score?.toFixed(0) || 0}%`);
       }
       navigate('/dashboard');
     },

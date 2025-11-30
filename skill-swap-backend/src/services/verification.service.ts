@@ -174,10 +174,20 @@ export const submitTestAnswers = async (data: SubmitTestData): Promise<IVerifica
 
       // Add skill to user's verifiedSkills
       const user = await User.findById(userId);
-      if (user && !user.verifiedSkills.some((id) => id.toString() === test.skillId.toString())) {
+      if (!user) {
+        throw new Error(ERROR_MESSAGES.USER_NOT_FOUND);
+      }
+      
+      const skillIdString = test.skillId.toString();
+      const isAlreadyVerified = user.verifiedSkills.some((id) => id.toString() === skillIdString);
+      
+      if (!isAlreadyVerified) {
         user.verifiedSkills.push(test.skillId);
         await user.save();
-        console.log('Added skill to user verifiedSkills:', test.skillId.toString());
+        console.log('✅ Added skill to user verifiedSkills:', skillIdString);
+        console.log('User verifiedSkills now:', user.verifiedSkills.map(id => id.toString()));
+      } else {
+        console.log('Skill already in verifiedSkills:', skillIdString);
       }
     }
 
