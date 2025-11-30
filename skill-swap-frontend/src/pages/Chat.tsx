@@ -147,6 +147,18 @@ const Chat = () => {
       }
     };
 
+    // Listen for session ended event
+    const handleSessionEnded = (data: { chatId: string; endedBy: string }) => {
+      console.log('Session ended event received:', data);
+      if (data.chatId === chatId) {
+        // Show rating modal when session is ended by other participant
+        setShowRatingModal(true);
+        queryClient.invalidateQueries({ queryKey: ['chats'] });
+        queryClient.invalidateQueries({ queryKey: ['requests', 'accepted'] });
+        toast.info('Session ended. Please rate your experience.');
+      }
+    };
+
     // Listen for socket errors
     const handleError = (error: any) => {
       console.error('Socket error:', error);
@@ -154,11 +166,13 @@ const Chat = () => {
     };
 
     socket.on('new-message', handleNewMessage);
+    socket.on('session-ended', handleSessionEnded);
     socket.on('error', handleError);
 
     return () => {
       console.log('Cleaning up socket listeners for chat:', chatId);
       socket.off('new-message', handleNewMessage);
+      socket.off('session-ended', handleSessionEnded);
       socket.off('error', handleError);
       socket.off('connect', handleConnect);
       socket.emit('leave-chat', { chatId });
