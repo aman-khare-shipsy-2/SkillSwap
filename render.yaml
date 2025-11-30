@@ -3,7 +3,7 @@ services:
     name: skill-swap-backend
     env: node
     plan: free
-    buildCommand: cd skill-swap-backend && npm install && npm run build
+    buildCommand: cd skill-swap-backend && NODE_ENV=development npm install && npm run build
     startCommand: cd skill-swap-backend && npm start
     healthCheckPath: /api/health
     envVars:
