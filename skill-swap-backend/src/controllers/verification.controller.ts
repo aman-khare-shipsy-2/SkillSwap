@@ -58,6 +58,9 @@ export const submitTestController = async (
       return;
     }
 
+    // Log for debugging
+    console.log('Submitting test:', { testId, userId: req.userId, answersCount: answers?.length });
+
     const test = await submitTestAnswers({
       testId,
       userId: req.userId,
@@ -66,6 +69,12 @@ export const submitTestController = async (
 
     sendSuccess(res, test, SUCCESS_MESSAGES.TEST_SUBMITTED);
   } catch (error) {
+    // Log error for debugging
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('Error in submitTestController:', errorMessage);
+    if (error instanceof Error) {
+      console.error('Error stack:', error.stack);
+    }
     next(error);
   }
 };

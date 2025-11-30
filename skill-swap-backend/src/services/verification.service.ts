@@ -106,64 +106,78 @@ export const startVerificationTest = async (
 
 // Submit test answers
 export const submitTestAnswers = async (data: SubmitTestData): Promise<IVerificationTest> => {
-  const { testId, userId, answers } = data;
+  try {
+    const { testId, userId, answers } = data;
 
-  if (!mongoose.Types.ObjectId.isValid(testId) || !mongoose.Types.ObjectId.isValid(userId)) {
-    throw new Error(ERROR_MESSAGES.INVALID_INPUT);
-  }
-
-  // Find test
-  const test = await VerificationTest.findById(testId);
-  if (!test) {
-    throw new Error(ERROR_MESSAGES.TEST_NOT_FOUND);
-  }
-
-  // Validate user owns test
-  if (test.userId.toString() !== userId) {
-    throw new Error(ERROR_MESSAGES.FORBIDDEN);
-  }
-
-  // Validate test is pending
-  if (test.status !== 'pending') {
-    throw new Error(ERROR_MESSAGES.TEST_ALREADY_COMPLETED);
-  }
-
-  // Update questions with user answers
-  answers.forEach((answer) => {
-    if (test.questions[answer.questionIndex]) {
-      test.questions[answer.questionIndex].userAnswer = answer.answer;
+    if (!mongoose.Types.ObjectId.isValid(testId) || !mongoose.Types.ObjectId.isValid(userId)) {
+      throw new Error(ERROR_MESSAGES.INVALID_INPUT);
     }
-  });
 
-  // Calculate score (pre-save hook will handle this, but we can also do it here)
-  const totalQuestions = test.questions.length;
-  let correctAnswers = 0;
-  test.questions.forEach((question) => {
-    if (question.userAnswer !== undefined && question.userAnswer === question.correctAnswer) {
-      correctAnswers++;
+    // Find test
+    const test = await VerificationTest.findById(testId);
+    if (!test) {
+      throw new Error(ERROR_MESSAGES.TEST_NOT_FOUND);
     }
-  });
 
-  const scorePercentage = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
-  test.score = scorePercentage;
-
-  // Determine status
-  test.status = scorePercentage >= VERIFICATION_PASSING_SCORE ? 'passed' : 'failed';
-
-  if (test.status === 'passed') {
-    test.verifiedAt = new Date();
-
-    // Add skill to user's verifiedSkills
-    const user = await User.findById(userId);
-    if (user && !user.verifiedSkills.some((id) => id.toString() === test.skillId.toString())) {
-      user.verifiedSkills.push(test.skillId);
-      await user.save();
+    // Validate user owns test
+    if (test.userId.toString() !== userId) {
+      throw new Error(ERROR_MESSAGES.FORBIDDEN);
     }
+
+    // Validate test is pending
+    if (test.status !== 'pending') {
+      throw new Error(ERROR_MESSAGES.TEST_ALREADY_COMPLETED);
+    }
+
+    // Update questions with user answers
+    answers.forEach((answer) => {
+      if (test.questions[answer.questionIndex]) {
+        test.questions[answer.questionIndex].userAnswer = answer.answer;
+      }
+    });
+
+    // Mark questions as modified so pre-save hook runs
+    test.markModified('questions');
+
+    // Calculate score (pre-save hook will handle this, but we can also do it here)
+    const totalQuestions = test.questions.length;
+    let correctAnswers = 0;
+    test.questions.forEach((question) => {
+      if (question.userAnswer !== undefined && question.userAnswer === question.correctAnswer) {
+        correctAnswers++;
+      }
+    });
+
+    const scorePercentage = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
+    test.score = scorePercentage;
+
+    // Determine status
+    test.status = scorePercentage >= VERIFICATION_PASSING_SCORE ? 'passed' : 'failed';
+
+    if (test.status === 'passed') {
+      test.verifiedAt = new Date();
+
+      // Add skill to user's verifiedSkills
+      const user = await User.findById(userId);
+      if (user && !user.verifiedSkills.some((id) => id.toString() === test.skillId.toString())) {
+        user.verifiedSkills.push(test.skillId);
+        await user.save();
+      }
+    }
+
+    await test.save();
+
+    return test;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('Error in submitTestAnswers:', {
+      testId: data.testId,
+      userId: data.userId,
+      error: errorMessage,
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    throw error;
   }
-
-  await test.save();
-
-  return test;
 };
 
 // Get test by ID
