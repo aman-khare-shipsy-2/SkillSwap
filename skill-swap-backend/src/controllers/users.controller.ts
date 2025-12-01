@@ -358,7 +358,14 @@ export const getUserAnalytics = async (
 
     // Use ratingsHistory from User model as primary source (more reliable)
     // Fallback to ratingsTrend from Analytics if ratingsHistory is empty
-    let ratingsTrend = [];
+    type RatingTrendItem = {
+      rating: number;
+      skill: any;
+      sessionId?: any;
+      timestamp: Date;
+    };
+    
+    let ratingsTrend: RatingTrendItem[] = [];
     if (user.ratingsHistory && user.ratingsHistory.length > 0) {
       // Convert ratingsHistory to ratingsTrend format
       ratingsTrend = user.ratingsHistory.map((rating) => ({
@@ -369,7 +376,12 @@ export const getUserAnalytics = async (
       }));
     } else if (analytics?.ratingsTrend && analytics.ratingsTrend.length > 0) {
       // Fallback to Analytics ratingsTrend
-      ratingsTrend = analytics.ratingsTrend;
+      ratingsTrend = analytics.ratingsTrend.map((rating) => ({
+        rating: rating.rating,
+        skill: rating.skill,
+        sessionId: rating.sessionId,
+        timestamp: rating.timestamp,
+      }));
     }
 
     const analyticsData = {
