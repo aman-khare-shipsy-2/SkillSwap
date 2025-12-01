@@ -300,6 +300,7 @@ export const getUserAnalytics = async (
 
     const analytics = await Analytics.findOne({ userId: req.user!._id })
       .populate('skillId', 'name category')
+      .populate('ratingsTrend.skill', 'name category')
       .exec();
 
     const user = await User.findById(req.user!._id)

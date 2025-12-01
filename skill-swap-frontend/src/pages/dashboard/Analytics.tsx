@@ -29,14 +29,40 @@ const Analytics = () => {
     ?.filter((rating) => {
       // Filter by selected skill if not "all"
       if (selectedSkill === 'all') return true;
-      const skillId = typeof rating.skill === 'string' ? rating.skill : rating.skill?._id;
+      // Handle skill as ObjectId string or populated object
+      let skillId: string | undefined;
+      if (typeof rating.skill === 'string') {
+        skillId = rating.skill;
+      } else if (rating.skill && typeof rating.skill === 'object' && '_id' in rating.skill) {
+        skillId = (rating.skill as any)._id;
+      }
       return skillId === selectedSkill;
     })
-    .map((rating, index) => ({
-      name: `Rating ${index + 1}`,
-      rating: rating.rating,
-      date: new Date(rating.timestamp).toLocaleDateString(),
-    })) || [];
+    .sort((a, b) => {
+      // Sort by timestamp (oldest first)
+      const dateA = new Date(a.timestamp).getTime();
+      const dateB = new Date(b.timestamp).getTime();
+      return dateA - dateB;
+    })
+    .map((rating, index) => {
+      const timestamp = rating.timestamp instanceof Date 
+        ? rating.timestamp 
+        : new Date(rating.timestamp);
+      
+      return {
+        name: `#${index + 1}`,
+        rating: Number(rating.rating),
+        date: timestamp.toLocaleDateString(),
+        fullDate: timestamp.toISOString(),
+      };
+    }) || [];
+
+  console.log('Analytics data:', {
+    hasAnalytics: !!analytics,
+    ratingsTrendLength: analytics?.ratingsTrend?.length || 0,
+    chartDataLength: chartData.length,
+    sampleRating: analytics?.ratingsTrend?.[0],
+  });
 
   return (
     <div className="space-y-6">
@@ -85,17 +111,32 @@ const Analytics = () => {
 
         {chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={chartData}>
+            <LineChart 
+              data={chartData}
+              margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
+            >
               <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-              <XAxis dataKey="name" stroke="#64748B" />
-              <YAxis domain={[0, 5]} stroke="#64748B" />
+              <XAxis 
+                dataKey="name" 
+                stroke="#64748B"
+                tick={{ fill: '#64748B', fontSize: 12 }}
+              />
+              <YAxis 
+                domain={[0, 5]} 
+                stroke="#64748B"
+                tick={{ fill: '#64748B', fontSize: 12 }}
+                label={{ value: 'Rating', angle: -90, position: 'insideLeft', fill: '#64748B' }}
+              />
               <Tooltip 
                 contentStyle={{ 
                   backgroundColor: '#FFFFFF', 
                   border: '1px solid #E2E8F0',
                   borderRadius: '12px',
-                  padding: '12px'
-                }} 
+                  padding: '12px',
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                }}
+                formatter={(value: number) => [`${value}/5`, 'Rating']}
+                labelFormatter={(label) => `Rating ${label}`}
               />
               <Legend />
               <Line
@@ -104,13 +145,15 @@ const Analytics = () => {
                 stroke="#6366F1"
                 strokeWidth={2}
                 name="Rating"
-                dot={{ fill: '#6366F1', r: 4 }}
+                dot={{ fill: '#6366F1', r: 5, strokeWidth: 2, stroke: '#FFFFFF' }}
+                activeDot={{ r: 7 }}
               />
             </LineChart>
           </ResponsiveContainer>
         ) : (
           <div className="text-center py-12 text-text-secondary">
-            No rating data available yet
+            <p className="mb-2">No rating data available yet</p>
+            <p className="text-sm">Ratings will appear here once you receive feedback from other users</p>
           </div>
         )}
       </div>
