@@ -305,6 +305,7 @@ export const getUserAnalytics = async (
 
     const user = await User.findById(req.user!._id)
       .select('averageRating totalSessionsTaught totalSkillsLearnt ratingsHistory')
+      .populate('ratingsHistory.skill', 'name category')
       .exec();
 
     if (!user) {
@@ -355,11 +356,27 @@ export const getUserAnalytics = async (
       }
     });
 
+    // Use ratingsHistory from User model as primary source (more reliable)
+    // Fallback to ratingsTrend from Analytics if ratingsHistory is empty
+    let ratingsTrend = [];
+    if (user.ratingsHistory && user.ratingsHistory.length > 0) {
+      // Convert ratingsHistory to ratingsTrend format
+      ratingsTrend = user.ratingsHistory.map((rating) => ({
+        rating: rating.rating,
+        skill: rating.skill,
+        sessionId: rating.sessionId,
+        timestamp: rating.timestamp,
+      }));
+    } else if (analytics?.ratingsTrend && analytics.ratingsTrend.length > 0) {
+      // Fallback to Analytics ratingsTrend
+      ratingsTrend = analytics.ratingsTrend;
+    }
+
     const analyticsData = {
       averageRating: user.averageRating,
       totalSessionsTaught: totalSessions || user.totalSessionsTaught || 0,
       totalSkillsLearnt: skillsLearntSet.size || user.totalSkillsLearnt || 0,
-      ratingsTrend: analytics?.ratingsTrend || [],
+      ratingsTrend: ratingsTrend,
       sessionsPerMonth: analytics?.sessionsPerMonth || [],
     };
 
