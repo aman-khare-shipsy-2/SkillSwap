@@ -358,31 +358,33 @@ export const getUserAnalytics = async (
 
     // Use ratingsHistory from User model as primary source (more reliable)
     // Fallback to ratingsTrend from Analytics if ratingsHistory is empty
-    type RatingTrendItem = {
+    interface RatingTrendItem {
       rating: number;
-      skill: any;
-      sessionId?: any;
+      skill: mongoose.Types.ObjectId | { _id: mongoose.Types.ObjectId; name?: string; category?: string };
+      sessionId?: mongoose.Types.ObjectId;
       timestamp: Date;
-    };
-    
-    let ratingsTrend: RatingTrendItem[] = [];
-    if (user.ratingsHistory && user.ratingsHistory.length > 0) {
-      // Convert ratingsHistory to ratingsTrend format
-      ratingsTrend = user.ratingsHistory.map((rating) => ({
-        rating: rating.rating,
-        skill: rating.skill,
-        sessionId: rating.sessionId,
-        timestamp: rating.timestamp,
-      }));
-    } else if (analytics?.ratingsTrend && analytics.ratingsTrend.length > 0) {
-      // Fallback to Analytics ratingsTrend
-      ratingsTrend = analytics.ratingsTrend.map((rating) => ({
-        rating: rating.rating,
-        skill: rating.skill,
-        sessionId: rating.sessionId,
-        timestamp: rating.timestamp,
-      }));
     }
+    
+    const ratingsTrend: RatingTrendItem[] = (() => {
+      if (user.ratingsHistory && user.ratingsHistory.length > 0) {
+        // Convert ratingsHistory to ratingsTrend format
+        return user.ratingsHistory.map((rating) => ({
+          rating: rating.rating,
+          skill: rating.skill,
+          sessionId: rating.sessionId,
+          timestamp: rating.timestamp,
+        }));
+      } else if (analytics?.ratingsTrend && analytics.ratingsTrend.length > 0) {
+        // Fallback to Analytics ratingsTrend
+        return analytics.ratingsTrend.map((rating) => ({
+          rating: rating.rating,
+          skill: rating.skill,
+          sessionId: rating.sessionId,
+          timestamp: rating.timestamp,
+        }));
+      }
+      return [];
+    })();
 
     const analyticsData = {
       averageRating: user.averageRating,
